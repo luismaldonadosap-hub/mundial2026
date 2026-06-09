@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from './supabase.js'
 
 // ── CONSTANTES ────────────────────────────────────────────────
-const ADMIN_PIN  = '2145'
+const ADMIN_PIN  = '2026'
 const LOCK_DATE  = new Date('2026-06-11T21:00:00Z')
 
 const GROUPS = {
@@ -304,14 +304,34 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
   // ── TABS ──────────────────────────────────────────────────
   const TABS = [
     {id:'grupos',label:'📊 Grupos'},
-    ...(isAdmin ? [{id:'partidos',label:'⚽ Partidos'}] : []),
+    {id:'partidos',label:'⚽ Partidos'},
     {id:'eliminatorias',label:'🏆 Eliminatorias'},
     {id:'bracket',label:'🌐 Bracket'},
     {id:'quiniela',label:'🎯 Quiniela'},
     {id:'ranking',label:'🥇 Ranking'},
+    {id:'pronosticos',label:'👁 Pronósticos'},
   ]
 
   const groupMs = matches.filter(m => m.grp===activeGroup)
+
+  // Lista de todos los participantes
+  const allNicknames = [...new Set(allQuinielas.map(r => r.nickname))]
+
+  // Pronóstico de un jugador para un partido
+  const getQ = (nick, matchId) => allQuinielas.find(r => r.nickname===nick && r.match_id===matchId)
+
+  // Badge de resultado para un pronóstico
+  function getBadge(match, q) {
+    if (!q || q.s1==='' || q.s2==='') return null
+    if (match.s1==='' || match.s2==='') return null
+    const r1=parseInt(match.s1), r2=parseInt(match.s2)
+    const q1=parseInt(q.s1), q2=parseInt(q.s2)
+    if (isNaN(r1)||isNaN(r2)||isNaN(q1)||isNaN(q2)) return null
+    if (q1===r1 && q2===r2) return {pts:3, color:'#69f0ae', label:'✅'}
+    const rR=r1>r2?'1':r1<r2?'2':'X', qR=q1>q2?'1':q1<q2?'2':'X'
+    if (rR===qR) return {pts:1, color:'#ffeb3b', label:'🟡'}
+    return {pts:0, color:'#ef5350', label:'❌'}
+  }
 
   // ── PANTALLA DE NICKNAME ──────────────────────────────────
   if (!nickname) return (
@@ -320,7 +340,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
       <div style={{background:'#0d1b2a',border:'2px solid #1565c0',borderRadius:20,padding:36,
         width:300,textAlign:'center',boxShadow:'0 8px 32px rgba(0,0,0,0.5)'}}>
         <div style={{fontSize:40,marginBottom:8}}>🏆</div>
-        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Copa Fray Luis de León 2026</div>
+        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Copa del Mundo 2026</div>
         <div style={{fontSize:13,color:'#90caf9',marginBottom:24}}>Introduce tu nombre para entrar</div>
         <input value={nickInput} onChange={e=>setNickInput(e.target.value)}
           onKeyDown={e=>e.key==='Enter'&&nickInput.trim()&&setNickname(nickInput.trim())}
