@@ -530,7 +530,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
         )}
 
         {/* ── PARTIDOS ── */}
-        {tab==='partidos' && is Admin && groupMs.map(m=>(
+        {tab==='partidos' && isAdmin && groupMs.map(m=>(
           <MatchRow key={m.id} m={m} onScore={updateMatchScore} locked={isLocked} isAdmin={isAdmin}/>
         ))}
 
