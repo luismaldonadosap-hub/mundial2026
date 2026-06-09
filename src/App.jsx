@@ -304,7 +304,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
   // ── TABS ──────────────────────────────────────────────────
   const TABS = [
     {id:'grupos',label:'📊 Grupos'},
-    {id:'partidos',label:'⚽ Partidos'},
+    ...(isAdmin ? [{id:'partidos',label:'⚽ Partidos'}] : []),
     {id:'eliminatorias',label:'🏆 Eliminatorias'},
     {id:'bracket',label:'🌐 Bracket'},
     {id:'quiniela',label:'🎯 Quiniela'},
