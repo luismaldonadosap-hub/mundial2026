@@ -282,7 +282,7 @@ export default function App() {
 
   // ── ADMIN ─────────────────────────────────────────────────
   function tryLogin() {
-    if (pin === ADMIN_PIN) { setIsAdmin(true); setShowLogin(false); setPinError(false); setPin('') }
+    if (pin === ADMIN_PIN) { setIsAdmin(true); setShowLogin(false); setAdminPinError(false); setPin('') }
     else setAdminPinError(true)
   }
 
@@ -390,7 +390,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
   // ── TABS ──────────────────────────────────────────────────
   const TABS = [
     {id:'grupos',label:'📊 Grupos'},
-    {id:'partidos',label:'⚽ Partidos'},
+    ...(isAdmin ? [{id:'partidos',label:'⚽ Partidos'}] : []),
     {id:'eliminatorias',label:'🏆 Eliminatorias'},
     {id:'bracket',label:'🌐 Bracket'},
     {id:'quiniela',label:'🎯 Quiniela'},
@@ -480,7 +480,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
       <div style={{background:'#0d1b2a',border:'2px solid #1565c0',borderRadius:20,padding:36,
         width:300,textAlign:'center',boxShadow:'0 8px 32px rgba(0,0,0,0.5)'}}>
         <div style={{fontSize:40,marginBottom:8}}>🏆</div>
-        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Copa del Mundo 2026</div>
+        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Copa del Mundo Fray Luis 2026</div>
 
         {/* PASO 1: Nickname */}
         {pinStep==='nick' && <>
@@ -625,7 +625,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
             </button>
           </div>
           <div>
-            <div style={{fontSize:24,fontWeight:800}}>🏆 Copa del Mundo 2026</div>
+            <div style={{fontSize:24,fontWeight:800}}>🏆 Copa del Mundo Fray Luis 2026</div>
             <div style={{fontSize:11,color:'#90caf9',marginBottom:6}}>EE.UU. · Canadá · México • 11 Jun – 19 Jul</div>
           </div>
           <div style={{textAlign:'right',paddingTop:4}}>
@@ -711,7 +711,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
         )}
 
         {/* ── PARTIDOS ── */}
-        {tab==='partidos' && groupMs.map(m=>(
+        {tab==='partidos' && isAdmin && groupMs.map(m=>(
           <MatchRow key={m.id} m={m} onScore={updateMatchScore} locked={isLocked} isAdmin={isAdmin}/>
         ))}
 
