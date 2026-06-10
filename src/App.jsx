@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from './supabase.js'
 
 // ── CONSTANTES ────────────────────────────────────────────────
-const ADMIN_PIN  = '2145'
+const ADMIN_PIN  = '2026'
 const LOCK_DATE  = new Date('2026-06-11T21:00:00Z')
 
 const GROUPS = {
@@ -146,9 +146,9 @@ export default function App() {
   const [quiniela, setQuiniela]   = useState({})   // { match_id: {s1,s2} }
   const [allQuinielas, setAllQuinielas] = useState([]) // para ranking
   const [isAdmin, setIsAdmin]     = useState(false)
-  const [showLogin, setShowLogin] = useState(false)
-  const [pin, setPin]             = useState('')
-  const [adminPinError, setAdminPinError]   = useState(false)
+  const [showLogin, setShowLogin]         = useState(false)
+  const [pin, setPin]                     = useState('')
+  const [adminPinError, setAdminPinError] = useState(false)
   const [saving, setSaving]       = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiMsg, setAiMsg]         = useState('')
@@ -183,26 +183,24 @@ export default function App() {
   }
 
   async function handleNickSubmit() {
-  const nick = nickInput.trim()
-  if (!nick) return
-  try {
-    const { data, error } = await supabase
-      .from('players')
-      .select('pin')
-      .eq('nickname', nick)
-      .single()
-    if (data && !error) {
+    const nick = nickInput.trim()
+    if (!nick) return
+    // Verificar si ya tiene PIN registrado
+    try {
+      const { data } = await supabase.from('players').select('pin').eq('nickname', nick)
+      if (data && data.length > 0) {
+        // Ya existe — pedir PIN
+        setPinStep('verify')
+      } else {
+        // Nuevo jugador — crear PIN
+        setPinStep('create')
+      }
       setNickname(nick)
-      setPinStep('verify')
-    } else {
-      setNickname(nick)
+    } catch {
       setPinStep('create')
+      setNickname(nick)
     }
-  } catch {
-    setNickname(nick)
-    setPinStep('create')
   }
-}
 
   async function handleCreatePin() {
     if (pinInput.length !== 4 || !/^\d{4}$/.test(pinInput)) {
@@ -316,7 +314,7 @@ export default function App() {
 
   // ── GUARDAR QUINIELA (usuario) ────────────────────────────
   const updateQuiniela = useCallback(async (matchId, field, val) => {
-    if (tournamentStarted || !nickname) return
+    if (tournamentStarted || !nickname || !quinielaUnlocked) return
     setQuiniela(prev => ({ ...prev, [matchId]: { ...(prev[matchId]||{s1:'',s2:''}), [field]:val } }))
     const cur = quiniela[matchId] || { s1:'', s2:'' }
     await supabase.from('quiniela').upsert({
@@ -474,13 +472,13 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
   }
 
   // ── PANTALLA DE ENTRADA ──────────────────────────────────
-  if (!nickname || pinStep === 'nick' || pinStep === 'create' || pinStep === 'verify') return (
+  if (!nickname || pinStep === 'create' || pinStep === 'verify') return (
     <div style={{fontFamily:'system-ui',background:'#0a0e1a',minHeight:'100vh',display:'flex',
       alignItems:'center',justifyContent:'center',color:'#fff'}}>
       <div style={{background:'#0d1b2a',border:'2px solid #1565c0',borderRadius:20,padding:36,
         width:300,textAlign:'center',boxShadow:'0 8px 32px rgba(0,0,0,0.5)'}}>
         <div style={{fontSize:40,marginBottom:8}}>🏆</div>
-        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Copa del Mundo Fray Luis 2026</div>
+        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Copa del Mundo 2026</div>
 
         {/* PASO 1: Nickname */}
         {pinStep==='nick' && <>
@@ -513,7 +511,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
             style={{width:'100%',padding:'10px 12px',borderRadius:8,border:'2px solid #37474f',
               background:'#1e2d3d',color:'#fff',fontSize:20,textAlign:'center',
               boxSizing:'border-box',marginBottom:14,letterSpacing:8}}/>
-          {adminPinError&&<div style={{color:'#e53935',fontSize:12,marginBottom:10}}>{pinError}</div>}
+          {pinError&&<div style={{color:'#e53935',fontSize:12,marginBottom:10}}>{pinError}</div>}
           <button onClick={handleCreatePin}
             style={{width:'100%',background:'#1b5e20',border:'none',borderRadius:10,padding:12,
               color:'#fff',fontWeight:800,fontSize:16,cursor:'pointer'}}>
@@ -532,7 +530,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
               border:`2px solid ${adminPinError?'#e53935':'#37474f'}`,
               background:'#1e2d3d',color:'#fff',fontSize:20,textAlign:'center',
               boxSizing:'border-box',marginBottom:14,letterSpacing:8}}/>
-          {pinErrorMsg&&<div style={{color:'#e53935',fontSize:12,marginBottom:10}}>{pinErrorMsg}</div>}
+          {pinError&&<div style={{color:'#e53935',fontSize:12,marginBottom:10}}>{pinError}</div>}
           <button onClick={handleVerifyPin}
             style={{width:'100%',background:'#1565c0',border:'none',borderRadius:10,padding:12,
               color:'#fff',fontWeight:800,fontSize:16,cursor:'pointer'}}>
@@ -602,9 +600,9 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
               style={{width:'100%',padding:'10px 12px',borderRadius:8,
                 border:`2px solid ${pinError?'#e53935':'#37474f'}`,
                 background:'#1e2d3d',color:'#fff',fontSize:16,textAlign:'center',boxSizing:'border-box'}}/>
-            {pinError&&<div style={{color:'#e53935',fontSize:12,marginTop:6}}>PIN incorrecto</div>}
+            {adminPinError&&<div style={{color:'#e53935',fontSize:12,marginTop:6}}>PIN incorrecto</div>}
             <div style={{display:'flex',gap:8,marginTop:14}}>
-              <button onClick={()=>{setShowLogin(false);setAdminPinError(false);setPin('')}}
+              <button onClick={()=>{setShowLogin(false);setPinError(false);setPin('')}}
                 style={{flex:1,padding:10,borderRadius:8,border:'none',background:'#263238',color:'#90a4ae',cursor:'pointer',fontWeight:700}}>Cancelar</button>
               <button onClick={tryLogin}
                 style={{flex:1,padding:10,borderRadius:8,border:'none',background:'#1565c0',color:'#fff',cursor:'pointer',fontWeight:700}}>Entrar</button>
@@ -625,7 +623,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
             </button>
           </div>
           <div>
-            <div style={{fontSize:24,fontWeight:800}}>🏆 Copa del Mundo Fray Luis 2026</div>
+            <div style={{fontSize:24,fontWeight:800}}>🏆 Copa del Mundo 2026</div>
             <div style={{fontSize:11,color:'#90caf9',marginBottom:6}}>EE.UU. · Canadá · México • 11 Jun – 19 Jul</div>
           </div>
           <div style={{textAlign:'right',paddingTop:4}}>
