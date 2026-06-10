@@ -316,7 +316,7 @@ export default function App() {
 
   // ── GUARDAR QUINIELA (usuario) ────────────────────────────
   const updateQuiniela = useCallback(async (matchId, field, val) => {
-    if (tournamentStarted) return
+    if (tournamentStarted || !nickname) return
     setQuiniela(prev => ({ ...prev, [matchId]: { ...(prev[matchId]||{s1:'',s2:''}), [field]:val } }))
     const cur = quiniela[matchId] || { s1:'', s2:'' }
     await supabase.from('quiniela').upsert({
@@ -849,9 +849,9 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
                   <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                     <div style={{flex:1,textAlign:'right',fontSize:13,fontWeight:600}}>{F(m.t1)}</div>
                     <div style={{display:'flex',alignItems:'center',gap:4}}>
-                      <ScoreInput val={q.s1} onChange={v=>updateQuiniela(m.id,'s1',v)} locked={tournamentStarted || !quinielaUnlocked} w={40} color='#ce93d8'/>
+                      <ScoreInput val={q.s1} onChange={v=>updateQuiniela(m.id,'s1',v)} locked={tournamentStarted} w={40} color='#ce93d8'/>
                       <span style={{color:'#546e7a'}}>–</span>
-                      <ScoreInput val={q.s2} onChange={v=>updateQuiniela(m.id,'s2',v)} locked={tournamentStarted || !quinielaUnlocked} w={40} color='#ce93d8'/>
+                      <ScoreInput val={q.s2} onChange={v=>updateQuiniela(m.id,'s2',v)} locked={tournamentStarted} w={40} color='#ce93d8'/>
                     </div>
                     <div style={{flex:1,textAlign:'left',fontSize:13,fontWeight:600}}>{F(m.t2)}</div>
                   </div>
