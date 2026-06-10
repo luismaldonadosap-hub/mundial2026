@@ -532,7 +532,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
               border:`2px solid ${adminPinError?'#e53935':'#37474f'}`,
               background:'#1e2d3d',color:'#fff',fontSize:20,textAlign:'center',
               boxSizing:'border-box',marginBottom:14,letterSpacing:8}}/>
-          {pinErrorMsg&&<div style={{color:'#e53935',fontSize:12,marginBottom:10}}>{pinErrorMsg}</div>} style={{color:'#e53935',fontSize:12,marginBottom:10}}>{pinError}</div>}
+          {pinErrorMsg&&<div style={{color:'#e53935',fontSize:12,marginBottom:10}}>{pinErrorMsg}</div>}
           <button onClick={handleVerifyPin}
             style={{width:'100%',background:'#1565c0',border:'none',borderRadius:10,padding:12,
               color:'#fff',fontWeight:800,fontSize:16,cursor:'pointer'}}>
