@@ -183,24 +183,26 @@ export default function App() {
   }
 
   async function handleNickSubmit() {
-    const nick = nickInput.trim()
-    if (!nick) return
-    // Verificar si ya tiene PIN registrado
-    try {
-      const { data } = await supabase.from('players').select('pin').eq('nickname', nick)
-      if (data && data.length > 0) {
-        // Ya existe — pedir PIN
-        setPinStep('verify')
-      } else {
-        // Nuevo jugador — crear PIN
-        setPinStep('create')
-      }
+  const nick = nickInput.trim()
+  if (!nick) return
+  try {
+    const { data, error } = await supabase
+      .from('players')
+      .select('pin')
+      .eq('nickname', nick)
+      .single()
+    if (data && !error) {
       setNickname(nick)
-    } catch {
+      setPinStep('verify')
+    } else {
+      setNickname(nick)
       setPinStep('create')
-      setNickname(nick)
     }
+  } catch {
+    setNickname(nick)
+    setPinStep('create')
   }
+}
 
   async function handleCreatePin() {
     if (pinInput.length !== 4 || !/^\d{4}$/.test(pinInput)) {
