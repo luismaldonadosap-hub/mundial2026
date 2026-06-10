@@ -474,7 +474,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
   }
 
   // ── PANTALLA DE ENTRADA ──────────────────────────────────
-  if (!nickname || pinStep === 'create' || pinStep === 'verify') return (
+  if (!nickname || pinStep === 'nick' || pinStep === 'create' || pinStep === 'verify') return (
     <div style={{fontFamily:'system-ui',background:'#0a0e1a',minHeight:'100vh',display:'flex',
       alignItems:'center',justifyContent:'center',color:'#fff'}}>
       <div style={{background:'#0d1b2a',border:'2px solid #1565c0',borderRadius:20,padding:36,
