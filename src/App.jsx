@@ -135,6 +135,11 @@ export default function App() {
   const [pinStep, setPinStep]       = useState('nick') // 'nick' | 'create' | 'verify'
   const [pinError, setPinErrorMsg]  = useState('')
   const [quinielaUnlocked, setQuinielaUnlocked] = useState(false)
+  const [showChangePin, setShowChangePin] = useState(false)
+  const [changePinCurrent, setChangePinCurrent] = useState('')
+  const [changePinNew, setChangePinNew] = useState('')
+  const [changePinConfirm, setChangePinConfirm] = useState('')
+  const [changePinMsg, setChangePinMsg] = useState('')
   const [tab, setTab]             = useState('grupos')
   const [activeGroup, setActiveGroup] = useState('A')
   const [matches, setMatches]     = useState(DEFAULT_MATCHES)
@@ -221,6 +226,31 @@ export default function App() {
     } else {
       setPinErrorMsg('PIN incorrecto')
     }
+  }
+
+  async function handleChangePin() {
+    if (changePinNew.length !== 4 || !/^\d{4}$/.test(changePinNew)) {
+      setChangePinMsg('El PIN debe ser de 4 dígitos numéricos')
+      return
+    }
+    if (changePinNew !== changePinConfirm) {
+      setChangePinMsg('Los PINs no coinciden')
+      return
+    }
+    const { data } = await supabase.from('players').select('pin').eq('nickname', nickname)
+    if (!data || data.length === 0 || data[0].pin !== changePinCurrent) {
+      setChangePinMsg('PIN actual incorrecto')
+      return
+    }
+    await supabase.from('players').update({ pin: changePinNew }).eq('nickname', nickname)
+    setChangePinMsg('✅ PIN cambiado correctamente')
+    setTimeout(() => {
+      setShowChangePin(false)
+      setChangePinCurrent('')
+      setChangePinNew('')
+      setChangePinConfirm('')
+      setChangePinMsg('')
+    }, 1500)
   }
 
   async function loadMyQuiniela() {
@@ -520,6 +550,45 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
   return (
     <div style={{fontFamily:'system-ui,sans-serif',background:'#0a0e1a',minHeight:'100vh',color:'#e8eaf6'}}>
 
+      {/* MODAL CAMBIAR PIN */}
+      {showChangePin && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.8)',zIndex:100,
+          display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'#0d1b2a',border:'2px solid #1565c0',borderRadius:16,padding:28,width:280,textAlign:'center'}}>
+            <div style={{fontSize:20,fontWeight:800,marginBottom:16}}>🔑 Cambiar PIN</div>
+            <input type="password" maxLength={4} value={changePinCurrent}
+              onChange={e=>setChangePinCurrent(e.target.value)}
+              placeholder="PIN actual"
+              style={{width:'100%',padding:'10px 12px',borderRadius:8,border:'2px solid #37474f',
+                background:'#1e2d3d',color:'#fff',fontSize:20,textAlign:'center',
+                boxSizing:'border-box',marginBottom:10,letterSpacing:8}}/>
+            <input type="password" maxLength={4} value={changePinNew}
+              onChange={e=>setChangePinNew(e.target.value)}
+              placeholder="Nuevo PIN"
+              style={{width:'100%',padding:'10px 12px',borderRadius:8,border:'2px solid #37474f',
+                background:'#1e2d3d',color:'#fff',fontSize:20,textAlign:'center',
+                boxSizing:'border-box',marginBottom:10,letterSpacing:8}}/>
+            <input type="password" maxLength={4} value={changePinConfirm}
+              onChange={e=>setChangePinConfirm(e.target.value)}
+              placeholder="Confirmar nuevo PIN"
+              style={{width:'100%',padding:'10px 12px',borderRadius:8,border:'2px solid #37474f',
+                background:'#1e2d3d',color:'#fff',fontSize:20,textAlign:'center',
+                boxSizing:'border-box',marginBottom:14,letterSpacing:8}}/>
+            {changePinMsg && <div style={{fontSize:12,marginBottom:10,
+              color:changePinMsg.startsWith('✅')?'#69f0ae':'#e53935'}}>{changePinMsg}</div>}
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>{setShowChangePin(false);setChangePinMsg('');
+                setChangePinCurrent('');setChangePinNew('');setChangePinConfirm('')}}
+                style={{flex:1,padding:10,borderRadius:8,border:'none',background:'#263238',
+                  color:'#90a4ae',cursor:'pointer',fontWeight:700}}>Cancelar</button>
+              <button onClick={handleChangePin}
+                style={{flex:1,padding:10,borderRadius:8,border:'none',background:'#1565c0',
+                  color:'#fff',cursor:'pointer',fontWeight:700}}>Cambiar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* LOGIN MODAL */}
       {showLogin && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.8)',zIndex:100,
@@ -545,7 +614,14 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
       {/* HEADER */}
       <div style={{background:'linear-gradient(135deg,#1a237e,#283593,#1565c0)',padding:'14px 16px 0',textAlign:'center'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',maxWidth:900,margin:'0 auto'}}>
-          <div style={{fontSize:13,color:'#90caf9',paddingTop:6}}>👤 {nickname}</div>
+          <div style={{fontSize:13,color:'#90caf9',paddingTop:6}}>
+            👤 {nickname}
+            <button onClick={()=>setShowChangePin(true)}
+              style={{background:'rgba(255,255,255,0.1)',border:'none',borderRadius:10,
+                padding:'2px 8px',color:'#90caf9',cursor:'pointer',fontSize:10,marginLeft:6}}>
+              🔑 PIN
+            </button>
+          </div>
           <div>
             <div style={{fontSize:24,fontWeight:800}}>🏆 Copa del Mundo 2026</div>
             <div style={{fontSize:11,color:'#90caf9',marginBottom:6}}>EE.UU. · Canadá · México • 11 Jun – 19 Jul</div>
