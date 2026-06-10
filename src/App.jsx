@@ -316,7 +316,7 @@ export default function App() {
 
   // ── GUARDAR QUINIELA (usuario) ────────────────────────────
   const updateQuiniela = useCallback(async (matchId, field, val) => {
-    if (tournamentStarted || !nickname || !quinielaUnlocked) return
+    if (tournamentStarted) return
     setQuiniela(prev => ({ ...prev, [matchId]: { ...(prev[matchId]||{s1:'',s2:''}), [field]:val } }))
     const cur = quiniela[matchId] || { s1:'', s2:'' }
     await supabase.from('quiniela').upsert({
