@@ -438,6 +438,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
 
   // Lista de todos los participantes
   const allNicknames = [...new Set(allQuinielas.map(r => r.nickname))]
+  const groupMs = matches.filter(m => m.grp===activeGroup)
 
   // Colores por jugador
   const PLAYER_COLORS = ['#42a5f5','#69f0ae','#ff7043','#ce93d8','#ffca28','#26c6da','#ef5350','#66bb6a','#ffa726','#ab47bc']
