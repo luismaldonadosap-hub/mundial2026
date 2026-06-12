@@ -409,7 +409,8 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
     const lines = text.trim().replace(/\r/g,'').split('\n').slice(1) // skip header
     let ok = 0, err = 0
     for (const line of lines) {
-      const parts = line.split(',')
+      const sep = line.includes(';') ? ';' : ','
+      const parts = line.split(sep)
       if (parts.length < 6) { err++; continue }
       const [nick, grp, t1, t2, s1, s2] = parts.map(p => p.trim().replace(/"/g,'').replace(/\r/g,''))
       if (!nick || !grp || !t1 || !t2) { err++; continue }
