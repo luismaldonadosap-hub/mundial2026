@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from './supabase.js'
 
 // ── CONSTANTES ────────────────────────────────────────────────
-const ADMIN_PIN  = '2145'
+const ADMIN_PIN  = '2026'
 const LOCK_DATE  = new Date('2026-06-11T21:00:00Z')
 
 const GROUPS = {
@@ -314,7 +314,7 @@ export default function App() {
 
   // ── GUARDAR QUINIELA (usuario) ────────────────────────────
   const updateQuiniela = useCallback(async (matchId, field, val) => {
-  if (tournamentStarted || !nickname) return
+    if (tournamentStarted || !nickname || !quinielaUnlocked) return
     setQuiniela(prev => ({ ...prev, [matchId]: { ...(prev[matchId]||{s1:'',s2:''}), [field]:val } }))
     const cur = quiniela[matchId] || { s1:'', s2:'' }
     await supabase.from('quiniela').upsert({
@@ -358,12 +358,9 @@ export default function App() {
     setAiLoading(true); setAiMsg('')
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST', headers:{'Content-Type':'application/json',
-'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY,
-'anthropic-version': '2023-06-01',
-'anthropic-dangerous-direct-browser-access': 'true',},
+        method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
-          model:'claude-sonnet-4-6', max_tokens:2000,
+          model:'claude-sonnet-4-20250514', max_tokens:2000,
           tools:[{type:'web_search_20250305',name:'web_search'}],
           messages:[{role:'user',content:`Busca resultados reales de la Copa del Mundo FIFA 2026 (empieza 11 jun 2026). 
 Devuelve SOLO JSON sin markdown:
@@ -374,7 +371,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
       })
       const data = await res.json()
       const text = data.content?.filter(c=>c.type==='text').map(c=>c.text).join('')||''
-      const clean = text.replace(/```json|```/g,'').replace(/^[^{]*/,'').replace(/[^}]*$/,'').trim()
+      const clean = text.replace(/```json|```/g,'').trim()
       const parsed = JSON.parse(clean)
       if (!parsed.played) { setAiMsg(parsed.message||'Torneo no iniciado.') }
       else if (parsed.matches?.length) {
@@ -398,9 +395,46 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
     {id:'ranking',label:'🥇 Ranking'},
     {id:'pronosticos',label:'👁 Pronósticos'},
     {id:'estadisticas',label:'📈 Estadísticas'},
+    ...(isAdmin ? [{id:'adminpanel',label:'⚙️ Admin'}] : []),
   ]
 
-  const groupMs = matches.filter(m => m.grp===activeGroup)
+  const [adminSelectedNick, setAdminSelectedNick] = useState('')
+  const [csvMsg, setCsvMsg] = useState('')
+  const [csvLoading, setCsvLoading] = useState(false)
+
+  async function importCSV(file) {
+    setCsvLoading(true)
+    setCsvMsg('')
+    const text = await file.text()
+    const lines = text.trim().split('\n').slice(1) // skip header
+    let ok = 0, err = 0
+    for (const line of lines) {
+      const parts = line.split(',')
+      if (parts.length < 6) { err++; continue }
+      const [nick, grp, t1, t2, s1, s2] = parts.map(p => p.trim().replace(/"/g,''))
+      if (!nick || !grp || !t1 || !t2) { err++; continue }
+      // find match id
+      const m = matches.find(x => x.grp===grp && x.t1===t1 && x.t2===t2 && x.phase==='groups')
+      if (!m) { err++; continue }
+      await supabase.from('quiniela').upsert({
+        nickname: nick, match_id: m.id, s1: s1||'', s2: s2||''
+      }, { onConflict: 'nickname,match_id' })
+      ok++
+    }
+    setCsvMsg(`✅ ${ok} pronósticos importados${err>0?` · ⚠️ ${err} líneas con error`:''}`)
+    setCsvLoading(false)
+    loadAllQuinielas()
+  }
+
+  async function saveAdminQuiniela(matchId, field, val) {
+    if (!adminSelectedNick) return
+    await supabase.from('quiniela').upsert({
+      nickname: adminSelectedNick, match_id: matchId,
+      s1: field==='s1'?val:(allQuinielas.find(r=>r.nickname===adminSelectedNick&&r.match_id===matchId)?.s1||''),
+      s2: field==='s2'?val:(allQuinielas.find(r=>r.nickname===adminSelectedNick&&r.match_id===matchId)?.s2||''),
+    }, { onConflict: 'nickname,match_id' })
+    loadAllQuinielas()
+  }
 
   // Lista de todos los participantes
   const allNicknames = [...new Set(allQuinielas.map(r => r.nickname))]
@@ -481,7 +515,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
       <div style={{background:'#0d1b2a',border:'2px solid #1565c0',borderRadius:20,padding:36,
         width:300,textAlign:'center',boxShadow:'0 8px 32px rgba(0,0,0,0.5)'}}>
         <div style={{fontSize:40,marginBottom:8}}>🏆</div>
-        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Copa del Mundo Fray Luis 2026</div>
+        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Copa del Mundo 2026</div>
 
         {/* PASO 1: Nickname */}
         {pinStep==='nick' && <>
@@ -626,7 +660,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
             </button>
           </div>
           <div>
-            <div style={{fontSize:24,fontWeight:800}}>🏆 Copa del Mundo Fray Luis 2026</div>
+            <div style={{fontSize:24,fontWeight:800}}>🏆 Copa del Mundo 2026</div>
             <div style={{fontSize:11,color:'#90caf9',marginBottom:6}}>EE.UU. · Canadá · México • 11 Jun – 19 Jul</div>
           </div>
           <div style={{textAlign:'right',paddingTop:4}}>
@@ -863,6 +897,88 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
           </div>
         )}
 
+        {/* ── ADMIN PANEL ── */}
+        {tab==='adminpanel' && isAdmin && (
+          <div>
+            {/* IMPORTAR CSV */}
+            <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:14,color:'#f57f17',marginBottom:8}}>📥 Importar quiniela desde CSV</div>
+              <div style={{fontSize:12,color:'#546e7a',marginBottom:12}}>
+                Formato: <code style={{color:'#90caf9'}}>nickname,grupo,equipo1,equipo2,goles1,goles2</code>
+              </div>
+              <input type="file" accept=".csv"
+                onChange={e=>e.target.files[0]&&importCSV(e.target.files[0])}
+                style={{display:'none'}} id="csvInput"/>
+              <label htmlFor="csvInput"
+                style={{display:'inline-block',background:'#f57f17',border:'none',borderRadius:10,
+                  padding:'10px 20px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:13}}>
+                {csvLoading ? '⏳ Importando...' : '📂 Seleccionar archivo CSV'}
+              </label>
+              {csvMsg && <div style={{marginTop:10,fontSize:13,color:csvMsg.startsWith('✅')?'#69f0ae':'#ffeb3b'}}>{csvMsg}</div>}
+            </div>
+
+            {/* EDITAR QUINIELA DE JUGADOR */}
+            <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f'}}>
+              <div style={{fontWeight:800,fontSize:14,color:'#42a5f5',marginBottom:12}}>✏️ Editar quiniela de un jugador</div>
+
+              {/* Selector de jugador */}
+              <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:14}}>
+                {allNicknames.map(nick=>(
+                  <button key={nick} onClick={()=>setAdminSelectedNick(nick)}
+                    style={{background:adminSelectedNick===nick?'#1565c0':'#1e2a3a',border:'2px solid',
+                      borderColor:adminSelectedNick===nick?'#42a5f5':'#37474f',borderRadius:20,
+                      padding:'5px 14px',color:adminSelectedNick===nick?'#fff':'#90caf9',
+                      cursor:'pointer',fontWeight:700,fontSize:12}}>
+                    {nick}
+                  </button>
+                ))}
+                {/* Nuevo jugador */}
+                <input placeholder="+ Nuevo nickname"
+                  onKeyDown={e=>{if(e.key==='Enter'&&e.target.value.trim()){setAdminSelectedNick(e.target.value.trim());e.target.value=''}}}
+                  style={{background:'#1e2d3d',border:'2px solid #37474f',borderRadius:20,
+                    padding:'5px 14px',color:'#fff',fontSize:12,width:140}}/>
+              </div>
+
+              {adminSelectedNick && (
+                <div>
+                  <div style={{fontSize:13,color:'#90caf9',marginBottom:10}}>
+                    Editando quiniela de: <b style={{color:'#fff'}}>{adminSelectedNick}</b>
+                  </div>
+                  {/* Selector de grupo */}
+                  <div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:12}}>
+                    {Object.keys(GROUPS).map(g=>(
+                      <button key={g} onClick={()=>setActiveGroup(g)}
+                        style={{background:activeGroup===g?'#1565c0':'#1e2a3a',border:'2px solid',
+                          borderColor:activeGroup===g?'#42a5f5':'#37474f',borderRadius:8,padding:'4px 11px',
+                          color:activeGroup===g?'#fff':'#90caf9',cursor:'pointer',fontWeight:700,fontSize:12}}>
+                        Grupo {g}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Partidos */}
+                  {groupMs.map(m=>{
+                    const q = allQuinielas.find(r=>r.nickname===adminSelectedNick&&r.match_id===m.id)||{s1:'',s2:''}
+                    return(
+                      <div key={m.id} style={{background:'#0d2137',borderRadius:10,padding:'10px 12px',
+                        border:'1px solid #1e3a5f',marginBottom:6}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                          <div style={{flex:1,textAlign:'right',fontSize:13,fontWeight:600}}>{F(m.t1)}</div>
+                          <div style={{display:'flex',alignItems:'center',gap:4}}>
+                            <ScoreInput val={q.s1} onChange={v=>saveAdminQuiniela(m.id,'s1',v)} locked={false} w={40} color='#ce93d8'/>
+                            <span style={{color:'#546e7a'}}>–</span>
+                            <ScoreInput val={q.s2} onChange={v=>saveAdminQuiniela(m.id,'s2',v)} locked={false} w={40} color='#ce93d8'/>
+                          </div>
+                          <div style={{flex:1,textAlign:'left',fontSize:13,fontWeight:600}}>{F(m.t2)}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── ESTADÍSTICAS ── */}
         {tab==='estadisticas' && (
           <div>
@@ -1038,12 +1154,12 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
                       ))}
                     </div>
                     <div style={{overflowX:'auto'}}>
-                      <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,minWidth: Math.max(400, allNicknames.length * 55)}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,minWidth:400}}>
                         <thead>
                           <tr style={{background:'#0d2137',color:'#90caf9'}}>
                             <th style={{padding:'8px 10px',textAlign:'left',minWidth:120}}>Partido</th>
                             {allNicknames.map(nick=>(
-                              <th key={nick} style={{padding:'4px 2px',textAlign:'center',minWidth:50,
+                              <th key={nick} style={{padding:'8px 8px',textAlign:'center',minWidth:80,
                                 color:nick===nickname?'#42a5f5':'#90caf9'}}>
                                 {nick===nickname?'⭐ '+nick:nick}
                               </th>
@@ -1149,7 +1265,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
                                 padding:'10px 12px',border:'1px solid #1e3a5f',marginBottom:6}}>
                                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                                   <div style={{flex:1,textAlign:'right',fontSize:13,fontWeight:600}}>{F(m.t1)}</div>
-                                  <div style={{textAlign:'center',minWidth:50}}>
+                                  <div style={{textAlign:'center',minWidth:80}}>
                                     {q&&q.s1!==''&&q.s2!==''?(
                                       <div>
                                         <div style={{fontWeight:800,fontSize:16,color:'#ce93d8'}}>{q.s1}–{q.s2}</div>
