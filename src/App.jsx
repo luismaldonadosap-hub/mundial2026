@@ -406,12 +406,12 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
     setCsvLoading(true)
     setCsvMsg('')
     const text = await file.text()
-    const lines = text.trim().split('\n').slice(1) // skip header
+    const lines = text.trim().replace(/\r/g,'').split('\n').slice(1) // skip header
     let ok = 0, err = 0
     for (const line of lines) {
       const parts = line.split(',')
       if (parts.length < 6) { err++; continue }
-      const [nick, grp, t1, t2, s1, s2] = parts.map(p => p.trim().replace(/"/g,''))
+      const [nick, grp, t1, t2, s1, s2] = parts.map(p => p.trim().replace(/"/g,'').replace(/\r/g,''))
       if (!nick || !grp || !t1 || !t2) { err++; continue }
       // find match id
       const m = matches.find(x => x.grp===grp && x.t1===t1 && x.t2===t2 && x.phase==='groups')
