@@ -352,6 +352,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
             return row?{...m,s1:row.s1||'',s2:row.s2||'',pen1:row.pen1||'',pen2:row.pen2||''}:m
           }))
         }
+        await loadMatches()
         setAiMsg(`✅ ${parsed.matches.length} resultado(s) actualizados.`)
       }
     }catch(e){ setAiMsg('Error al obtener resultados.') }
