@@ -1028,18 +1028,16 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
             {allNicknames.length===0?(
               <div style={{textAlign:'center',color:'#546e7a',padding:30,fontSize:13}}>Aún no hay participantes.</div>
             ):(
-              <div>
-                <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
-              <div style={{fontWeight:800,fontSize:14,color:'#69f0ae',marginBottom:8}}>🏆 Rellenar Ronda de 32 automáticamente</div>
-              <div style={{fontSize:12,color:'#546e7a',marginBottom:12}}>
-                Rellena los enfrentamientos conocidos (1° y 2° de cada grupo) basándose en las clasificaciones actuales. Los terceros clasificados deben introducirse manualmente.
-              </div>
-              <button onClick={autoFillR32}
-                style={{background:'#1b5e20',border:'none',borderRadius:10,padding:'10px 20px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:13}}>
-                ⚡ Rellenar clasificados automáticamente
-              </button>
-            </div>
-
+<div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
+  <div style={{fontWeight:800,fontSize:14,color:'#69f0ae',marginBottom:8}}>🏆 Rellenar Ronda de 32 automáticamente</div>
+  <div style={{fontSize:12,color:'#546e7a',marginBottom:12}}>
+    Rellena los enfrentamientos conocidos basándose en las clasificaciones actuales. Los terceros deben introducirse manualmente.
+  </div>
+  <button onClick={autoFillR32}
+    style={{background:'#1b5e20',border:'none',borderRadius:10,padding:'10px 20px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:13}}>
+    ⚡ Rellenar clasificados automáticamente
+  </button>
+</div>
             <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
                   <div style={{fontWeight:800,fontSize:13,color:'#42a5f5',marginBottom:12}}>📊 Puntos actuales vs Máximo posible</div>
                   {playerStats.map(({nick,current,max})=>(
