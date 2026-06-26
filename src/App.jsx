@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { supabase } from './supabase.js'
 
 // ── CONSTANTES ────────────────────────────────────────────────
-const ADMIN_PIN  = '2145'
+const ADMIN_PIN  = '2026'
 const LOCK_DATE  = new Date('2026-06-11T21:00:00Z')
 
 const GROUPS = {
@@ -541,7 +541,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
     <div style={{fontFamily:'system-ui',background:'#0a0e1a',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff'}}>
       <div style={{background:'#0d1b2a',border:'2px solid #1565c0',borderRadius:20,padding:36,width:300,textAlign:'center',boxShadow:'0 8px 32px rgba(0,0,0,0.5)'}}>
         <div style={{fontSize:40,marginBottom:8}}>🏆</div>
-        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Copa del Mundo Fray Luis 2026</div>
+        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Copa del Mundo 2026</div>
 
         {pinStep==='nick'&&<>
           <div style={{fontSize:13,color:'#90caf9',marginBottom:24}}>Introduce tu nombre para entrar</div>
@@ -652,7 +652,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
             </button>
           </div>
           <div>
-            <div style={{fontSize:24,fontWeight:800}}>🏆 Copa del Mundo Fray Luis 2026</div>
+            <div style={{fontSize:24,fontWeight:800}}>🏆 Copa del Mundo 2026</div>
             <div style={{fontSize:11,color:'#90caf9',marginBottom:6}}>EE.UU. · Canadá · México • 11 Jun – 19 Jul</div>
           </div>
           <div style={{textAlign:'right',paddingTop:4}}>
@@ -1028,16 +1028,18 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
             {allNicknames.length===0?(
               <div style={{textAlign:'center',color:'#546e7a',padding:30,fontSize:13}}>Aún no hay participantes.</div>
             ):(
-<div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
-  <div style={{fontWeight:800,fontSize:14,color:'#69f0ae',marginBottom:8}}>🏆 Rellenar Ronda de 32 automáticamente</div>
-  <div style={{fontSize:12,color:'#546e7a',marginBottom:12}}>
-    Rellena los enfrentamientos conocidos basándose en las clasificaciones actuales. Los terceros deben introducirse manualmente.
-  </div>
-  <button onClick={autoFillR32}
-    style={{background:'#1b5e20',border:'none',borderRadius:10,padding:'10px 20px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:13}}>
-    ⚡ Rellenar clasificados automáticamente
-  </button>
-</div>
+              <div>
+                <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:14,color:'#69f0ae',marginBottom:8}}>🏆 Rellenar Ronda de 32 automáticamente</div>
+              <div style={{fontSize:12,color:'#546e7a',marginBottom:12}}>
+                Rellena los enfrentamientos conocidos (1° y 2° de cada grupo) basándose en las clasificaciones actuales. Los terceros clasificados deben introducirse manualmente.
+              </div>
+              <button onClick={autoFillR32}
+                style={{background:'#1b5e20',border:'none',borderRadius:10,padding:'10px 20px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:13}}>
+                ⚡ Rellenar clasificados automáticamente
+              </button>
+            </div>
+
             <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
                   <div style={{fontWeight:800,fontSize:13,color:'#42a5f5',marginBottom:12}}>📊 Puntos actuales vs Máximo posible</div>
                   {playerStats.map(({nick,current,max})=>(
