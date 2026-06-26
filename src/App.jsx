@@ -293,6 +293,68 @@ export default function App(){
     loadAllQuinielas()
   }
 
+  async function autoFillR32(){
+    // Official R32 bracket - fixed slots (winners and runners-up only)
+    // Slot index corresponds to r32 match order (0-15)
+    const r32Slots = [
+      { t1: {grp:'A', pos:1}, t2: {grp:'B', pos:1} }, // Match 73: 2A vs 2B -- Note: pos:1 = runner-up (index 1)
+      { t1: {grp:'E', pos:0}, t2: null },               // Match 74: 1E vs 3rd (manual)
+      { t1: {grp:'F', pos:0}, t2: {grp:'C', pos:1} },  // Match 75: 1F vs 2C
+      { t1: {grp:'C', pos:0}, t2: {grp:'F', pos:1} },  // Match 76: 1C vs 2F
+      { t1: {grp:'I', pos:0}, t2: null },               // Match 77: 1I vs 3rd (manual)
+      { t1: {grp:'E', pos:1}, t2: {grp:'I', pos:1} },  // Match 78: 2E vs 2I
+      { t1: {grp:'A', pos:0}, t2: null },               // Match 79: 1A vs 3rd (manual)
+      { t1: {grp:'L', pos:0}, t2: null },               // Match 80: 1L vs 3rd (manual)
+      { t1: {grp:'G', pos:0}, t2: null },               // Match 82: 1G vs 3rd (manual)
+      { t1: {grp:'D', pos:0}, t2: {grp:'B', pos:1} },  // Match 81: 1D vs 2B... wait
+      { t1: {grp:'H', pos:0}, t2: {grp:'J', pos:1} },  // Match 84: 1H vs 2J
+      { t1: {grp:'K', pos:1}, t2: {grp:'L', pos:1} },  // Match 83: 2K vs 2L
+      { t1: {grp:'B', pos:0}, t2: null },               // Match 85: 1B vs 3rd (manual)
+      { t1: {grp:'J', pos:0}, t2: {grp:'H', pos:1} },  // Match 86: 1J vs 2H
+      { t1: {grp:'K', pos:0}, t2: null },               // Match 87: 1K vs 3rd (manual)
+      { t1: {grp:'D', pos:1}, t2: {grp:'G', pos:1} },  // Match 88: 2D vs 2G
+    ]
+
+    const r32Matches = matchesRef.current.filter(m=>m.phase==='r32')
+    const updates = []
+
+    for(let i=0; i<Math.min(r32Slots.length, r32Matches.length); i++){
+      const slot = r32Slots[i]
+      const match = r32Matches[i]
+      const standings = groupStandings
+
+      let t1 = match.t1, t2 = match.t2
+
+      if(slot.t1){
+        const grpStanding = standings[slot.t1.grp]
+        if(grpStanding && grpStanding[slot.t1.pos]){
+          t1 = grpStanding[slot.t1.pos][0]
+        }
+      }
+      if(slot.t2){
+        const grpStanding = standings[slot.t2.grp]
+        if(grpStanding && grpStanding[slot.t2.pos]){
+          t2 = grpStanding[slot.t2.pos][0]
+        }
+      }
+
+      if(t1!==match.t1 || t2!==match.t2){
+        await supabase.from('matches').upsert({
+          id:match.id, phase:'r32', grp:null,
+          t1, t2, s1:match.s1||'', s2:match.s2||'', pen1:match.pen1||'', pen2:match.pen2||''
+        })
+        updates.push(match.id)
+      }
+    }
+
+    if(updates.length>0){
+      await loadMatches()
+      setCsvMsg(`✅ ${updates.length} enfrentamientos de Ronda de 32 actualizados automáticamente`)
+    } else {
+      setCsvMsg('ℹ️ No hay cambios — verifica que los grupos estén completos')
+    }
+  }
+
   async function saveAdminQuiniela(matchId,field,val){
     if(!adminSelectedNick) return
     const cur=allQuinielas.find(r=>r.nickname===adminSelectedNick&&r.match_id===matchId)||{s1:'',s2:''}
@@ -968,6 +1030,17 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
             ):(
               <div>
                 <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:14,color:'#69f0ae',marginBottom:8}}>🏆 Rellenar Ronda de 32 automáticamente</div>
+              <div style={{fontSize:12,color:'#546e7a',marginBottom:12}}>
+                Rellena los enfrentamientos conocidos (1° y 2° de cada grupo) basándose en las clasificaciones actuales. Los terceros clasificados deben introducirse manualmente.
+              </div>
+              <button onClick={autoFillR32}
+                style={{background:'#1b5e20',border:'none',borderRadius:10,padding:'10px 20px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:13}}>
+                ⚡ Rellenar clasificados automáticamente
+              </button>
+            </div>
+
+            <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
                   <div style={{fontWeight:800,fontSize:13,color:'#42a5f5',marginBottom:12}}>📊 Puntos actuales vs Máximo posible</div>
                   {playerStats.map(({nick,current,max})=>(
                     <div key={nick} style={{marginBottom:12}}>
