@@ -5,6 +5,16 @@ import { supabase } from './supabase.js'
 const ADMIN_PIN  = '2145'
 const LOCK_DATE  = new Date('2026-06-11T21:00:00Z')
 
+// Lock dates for each knockout phase (5 min before first match)
+const PHASE_LOCK_DATES = {
+  groups: new Date('2026-06-11T21:00:00Z'),
+  r32:    new Date('2026-06-28T19:55:00Z'), // 5 min before 20:00 UTC (LA 13:00 PT)
+  r16:    new Date('2026-07-04T17:55:00Z'), // 5 min before 18:00 UTC
+  qf:     new Date('2026-07-08T17:55:00Z'), // 5 min before 18:00 UTC
+  sf:     new Date('2026-07-11T19:55:00Z'), // 5 min before 20:00 UTC
+  final:  new Date('2026-07-18T18:55:00Z'), // 5 min before 19:00 UTC
+}
+
 const GROUPS = {
   A:['México','Sudáfrica','Corea del Sur','Chequia'],
   B:['Canadá','Bosnia-Herzegovina','Catar','Suiza'],
@@ -143,6 +153,7 @@ export default function App(){
   const [adminSelectedNick,setAdminSelectedNick] = useState('')
   const [csvMsg,setCsvMsg]             = useState('')
   const [csvLoading,setCsvLoading]     = useState(false)
+  const [quinielaPhase, setQuinielaPhase] = useState('groups')
   const [showChangePin,setShowChangePin]   = useState(false)
   const [changePinCurrent,setChangePinCurrent] = useState('')
   const [changePinNew,setChangePinNew]     = useState('')
@@ -294,65 +305,44 @@ export default function App(){
   }
 
   async function autoFillR32(){
-    // Official R32 bracket - fixed slots (winners and runners-up only)
-    // Slot index corresponds to r32 match order (0-15)
+    // Official R32 bracket based on confirmed FIFA 2026 matchups
+    // pos: 0 = group winner, 1 = runner-up, null = third place (manual)
     const r32Slots = [
-      { t1: {grp:'A', pos:1}, t2: {grp:'B', pos:1} }, // Match 73: 2A vs 2B -- Note: pos:1 = runner-up (index 1)
-      { t1: {grp:'E', pos:0}, t2: null },               // Match 74: 1E vs 3rd (manual)
-      { t1: {grp:'F', pos:0}, t2: {grp:'C', pos:1} },  // Match 75: 1F vs 2C
-      { t1: {grp:'C', pos:0}, t2: {grp:'F', pos:1} },  // Match 76: 1C vs 2F
-      { t1: {grp:'I', pos:0}, t2: null },               // Match 77: 1I vs 3rd (manual)
-      { t1: {grp:'E', pos:1}, t2: {grp:'I', pos:1} },  // Match 78: 2E vs 2I
-      { t1: {grp:'A', pos:0}, t2: null },               // Match 79: 1A vs 3rd (manual)
-      { t1: {grp:'L', pos:0}, t2: null },               // Match 80: 1L vs 3rd (manual)
-      { t1: {grp:'G', pos:0}, t2: null },               // Match 82: 1G vs 3rd (manual)
-      { t1: {grp:'D', pos:0}, t2: {grp:'B', pos:1} },  // Match 81: 1D vs 2B... wait
-      { t1: {grp:'H', pos:0}, t2: {grp:'J', pos:1} },  // Match 84: 1H vs 2J
-      { t1: {grp:'K', pos:1}, t2: {grp:'L', pos:1} },  // Match 83: 2K vs 2L
-      { t1: {grp:'B', pos:0}, t2: null },               // Match 85: 1B vs 3rd (manual)
-      { t1: {grp:'J', pos:0}, t2: {grp:'H', pos:1} },  // Match 86: 1J vs 2H
-      { t1: {grp:'K', pos:0}, t2: null },               // Match 87: 1K vs 3rd (manual)
-      { t1: {grp:'D', pos:1}, t2: {grp:'G', pos:1} },  // Match 88: 2D vs 2G
+      { t1: {grp:'A', pos:1}, t2: {grp:'B', pos:1} }, // M73: 2A vs 2B
+      { t1: {grp:'E', pos:0}, t2: null },               // M74: 1E vs 3rd
+      { t1: {grp:'F', pos:0}, t2: {grp:'C', pos:1} },  // M75: 1F vs 2C
+      { t1: {grp:'C', pos:0}, t2: {grp:'F', pos:1} },  // M76: 1C vs 2F
+      { t1: {grp:'I', pos:0}, t2: null },               // M77: 1I vs 3rd
+      { t1: {grp:'E', pos:1}, t2: {grp:'I', pos:1} },  // M78: 2E vs 2I
+      { t1: {grp:'A', pos:0}, t2: null },               // M79: 1A vs 3rd
+      { t1: {grp:'L', pos:0}, t2: null },               // M80: 1L vs 3rd
+      { t1: {grp:'D', pos:0}, t2: null },               // M81: 1D vs 3rd
+      { t1: {grp:'G', pos:0}, t2: null },               // M82: 1G vs 3rd
+      { t1: {grp:'K', pos:1}, t2: {grp:'L', pos:1} },  // M83: 2K vs 2L
+      { t1: {grp:'H', pos:0}, t2: {grp:'J', pos:1} },  // M84: 1H vs 2J
+      { t1: {grp:'B', pos:0}, t2: null },               // M85: 1B vs 3rd
+      { t1: {grp:'J', pos:0}, t2: {grp:'H', pos:1} },  // M86: 1J vs 2H
+      { t1: {grp:'K', pos:0}, t2: null },               // M87: 1K vs 3rd
+      { t1: {grp:'D', pos:1}, t2: {grp:'G', pos:1} },  // M88: 2D vs 2G
     ]
 
-    const r32Matches = matchesRef.current.filter(m=>m.phase==='r32')
-    const updates = []
-
-    for(let i=0; i<Math.min(r32Slots.length, r32Matches.length); i++){
-      const slot = r32Slots[i]
-      const match = r32Matches[i]
-      const standings = groupStandings
-
-      let t1 = match.t1, t2 = match.t2
-
-      if(slot.t1){
-        const grpStanding = standings[slot.t1.grp]
-        if(grpStanding && grpStanding[slot.t1.pos]){
-          t1 = grpStanding[slot.t1.pos][0]
-        }
-      }
-      if(slot.t2){
-        const grpStanding = standings[slot.t2.grp]
-        if(grpStanding && grpStanding[slot.t2.pos]){
-          t2 = grpStanding[slot.t2.pos][0]
-        }
-      }
-
-      if(t1!==match.t1 || t2!==match.t2){
+    const r32Matches=matchesRef.current.filter(m=>m.phase==='r32')
+    let updates=0
+    for(let i=0;i<Math.min(r32Slots.length,r32Matches.length);i++){
+      const slot=r32Slots[i]; const match=r32Matches[i]
+      let t1=match.t1, t2=match.t2
+      if(slot.t1){ const g=groupStandings[slot.t1.grp]; if(g&&g[slot.t1.pos]) t1=g[slot.t1.pos][0] }
+      if(slot.t2){ const g=groupStandings[slot.t2.grp]; if(g&&g[slot.t2.pos]) t2=g[slot.t2.pos][0] }
+      if(t1!==match.t1||t2!==match.t2){
         await supabase.from('matches').upsert({
-          id:match.id, phase:'r32', grp:null,
-          t1, t2, s1:match.s1||'', s2:match.s2||'', pen1:match.pen1||'', pen2:match.pen2||''
+          id:match.id,phase:'r32',grp:null,
+          t1,t2,s1:match.s1||'',s2:match.s2||'',pen1:match.pen1||'',pen2:match.pen2||''
         })
-        updates.push(match.id)
+        updates++
       }
     }
-
-    if(updates.length>0){
-      await loadMatches()
-      setCsvMsg(`✅ ${updates.length} enfrentamientos de Ronda de 32 actualizados automáticamente`)
-    } else {
-      setCsvMsg('ℹ️ No hay cambios — verifica que los grupos estén completos')
-    }
+    if(updates>0){ await loadMatches(); setCsvMsg(`✅ ${updates} enfrentamientos de R32 actualizados`) }
+    else setCsvMsg('ℹ️ No hay cambios — verifica que los grupos estén completos')
   }
 
   async function saveAdminQuiniela(matchId,field,val){
@@ -442,8 +432,15 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
         if(!q||q.s1===''||q.s2==='') return
         const q1=parseInt(q.s1),q2=parseInt(q.s2)
         if(isNaN(q1)||isNaN(q2)) return
-        if(q1===r1&&q2===r2) pts+=3
-        else{const rR=r1>r2?'1':r1<r2?'2':'X',qR=q1>q2?'1':q1<q2?'2':'X'; if(rR===qR) pts++}
+        if(q1===r1&&q2===r2){ pts+=3; return }
+        if(m.phase==='groups'){
+          const rR=r1>r2?'1':r1<r2?'2':'X',qR=q1>q2?'1':q1<q2?'2':'X'
+          if(rR===qR) pts++
+        } else {
+          const rW=r1>r2?'1':r1<r2?'2':(m.pen1&&m.pen2?(parseInt(m.pen1)>parseInt(m.pen2)?'1':'2'):null)
+          const qW=q1>q2?'1':q1<q2?'2':(m.pen1&&m.pen2?(parseInt(m.pen1)>parseInt(m.pen2)?'1':'2'):null)
+          if(rW&&qW&&rW===qW) pts++
+        }
       })
       return{nick,pts}
     }).sort((a,b)=>b.pts-a.pts)
@@ -462,10 +459,18 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
     const r1=parseInt(match.s1),r2=parseInt(match.s2)
     const q1=parseInt(q.s1),q2=parseInt(q.s2)
     if(isNaN(r1)||isNaN(r2)||isNaN(q1)||isNaN(q2)) return null
-    if(q1===r1&&q2===r2) return{pts:3,color:'#69f0ae',label:'✅'}
+    const isKnockout = match.phase !== 'groups'
+    if(q1===r1&&q2===r2) return{pts:3,color:'#69f0ae',label:'✅ +3'}
+    // For knockout, also check penalty winner
+    const rWinner = r1>r2?'1':r1<r2?'2':(match.pen1&&match.pen2?(parseInt(match.pen1)>parseInt(match.pen2)?'1':'2'):null)
+    const qWinner = q1>q2?'1':q1<q2?'2':(match.pen1&&match.pen2?(parseInt(match.pen1)>parseInt(match.pen2)?'1':'2'):null)
+    if(isKnockout){
+      if(rWinner&&qWinner&&rWinner===qWinner) return{pts:1,color:'#ffeb3b',label:'🟡 +1'}
+      return{pts:0,color:'#ef5350',label:'❌ +0'}
+    }
     const rR=r1>r2?'1':r1<r2?'2':'X',qR=q1>q2?'1':q1<q2?'2':'X'
-    if(rR===qR) return{pts:1,color:'#ffeb3b',label:'🟡'}
-    return{pts:0,color:'#ef5350',label:'❌'}
+    if(rR===qR) return{pts:1,color:'#ffeb3b',label:'🟡 +1'}
+    return{pts:0,color:'#ef5350',label:'❌ +0'}
   }
 
   const getQ=(nick,matchId)=>allQuinielas.find(r=>r.nickname===nick&&r.match_id===matchId)
@@ -833,42 +838,130 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
         {/* ── QUINIELA ── */}
         {tab==='quiniela'&&(
           <div>
-            {tournamentStarted&&!isAdmin&&(
-              <div style={{background:'#b71c1c',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#ffcdd2',marginBottom:12}}>
-                🔒 La quiniela está cerrada. El torneo ya ha comenzado.
-              </div>
-            )}
-            {!tournamentStarted&&(
-              <div style={{background:'#1a2744',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#90caf9',marginBottom:12}}>
-                🎯 Tus pronósticos se guardan automáticamente. Cierra el <b>11 de junio</b>.<br/>
-                +3 pts resultado exacto · +1 pt ganador/empate correcto
-              </div>
-            )}
-            {groupMs.map(m=>{
-              const q=quiniela[m.id]||{s1:'',s2:''}
-              const hasReal=m.s1!==''&&m.s2!==''
-              let badge=null
-              if(hasReal&&q.s1!==''&&q.s2!==''){
-                const r1=parseInt(m.s1),r2=parseInt(m.s2),q1=parseInt(q.s1),q2=parseInt(q.s2)
-                if(q1===r1&&q2===r2) badge=<span style={{color:'#69f0ae',fontWeight:700}}>✅ +3</span>
-                else{const rR=r1>r2?'1':r1<r2?'2':'X',qR=q1>q2?'1':q1<q2?'2':'X'
-                  badge=rR===qR?<span style={{color:'#ffeb3b',fontWeight:700}}>🟡 +1</span>:<span style={{color:'#ef5350',fontWeight:700}}>❌ +0</span>}
-              }
-              return(
-                <div key={m.id} style={{background:'#0d1b2a',borderRadius:10,padding:'10px 12px',border:'1px solid #1e3a5f',marginBottom:6}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                    <div style={{flex:1,textAlign:'right',fontSize:13,fontWeight:600}}>{F(m.t1)}</div>
-                    <div style={{display:'flex',alignItems:'center',gap:4}}>
-                      <ScoreInput val={q.s1} onChange={v=>updateQuiniela(m.id,'s1',v)} locked={tournamentStarted} w={40} color='#ce93d8'/>
-                      <span style={{color:'#546e7a'}}>–</span>
-                      <ScoreInput val={q.s2} onChange={v=>updateQuiniela(m.id,'s2',v)} locked={tournamentStarted} w={40} color='#ce93d8'/>
-                    </div>
-                    <div style={{flex:1,textAlign:'left',fontSize:13,fontWeight:600}}>{F(m.t2)}</div>
+            {/* Selector de fase */}
+            <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:14,justifyContent:'center'}}>
+              {[
+                {id:'groups',label:'⚽ Grupos'},
+                {id:'r32',label:'🔥 Ronda 32'},
+                {id:'r16',label:'⚔️ Octavos'},
+                {id:'qf',label:'🏅 Cuartos'},
+                {id:'sf',label:'🌟 Semis'},
+                {id:'final',label:'🏆 Final'},
+              ].map(p=>{
+                const lockDate=PHASE_LOCK_DATES[p.id]
+                const isLocked=now>=lockDate&&!isAdmin
+                const hasMatches=p.id==='groups'
+                  ? true
+                  : matches.filter(m=>m.phase===p.id&&m.t1).length>0
+                return(
+                  <button key={p.id} onClick={()=>setQuinielaPhase(p.id)}
+                    style={{background:quinielaPhase===p.id?'#7b1fa2':'#1e2a3a',border:'2px solid',
+                      borderColor:quinielaPhase===p.id?'#ce93d8':'#37474f',borderRadius:8,padding:'5px 12px',
+                      color:quinielaPhase===p.id?'#fff':hasMatches?'#90caf9':'#37474f',
+                      cursor:'pointer',fontWeight:700,fontSize:11,
+                      opacity:hasMatches?1:0.5}}>
+                    {p.label}{isLocked?' 🔒':''}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Quiniela de grupos */}
+            {quinielaPhase==='groups'&&(
+              <div>
+                {/* Selector de grupo */}
+                <div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:12,justifyContent:'center'}}>
+                  {Object.keys(GROUPS).map(g=>(
+                    <button key={g} onClick={()=>setActiveGroup(g)}
+                      style={{background:activeGroup===g?'#1565c0':'#1e2a3a',border:'2px solid',
+                        borderColor:activeGroup===g?'#42a5f5':'#37474f',borderRadius:8,padding:'4px 11px',
+                        color:activeGroup===g?'#fff':'#90caf9',cursor:'pointer',fontWeight:700,fontSize:12}}>
+                      Grupo {g}
+                    </button>
+                  ))}
+                </div>
+                {now>=LOCK_DATE&&!isAdmin&&(
+                  <div style={{background:'#b71c1c',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#ffcdd2',marginBottom:12}}>
+                    🔒 La quiniela de grupos está cerrada.
                   </div>
-                  {hasReal&&<div style={{textAlign:'center',marginTop:4,fontSize:11,color:'#78909c'}}>Real: {m.s1}–{m.s2} {badge}</div>}
+                )}
+                {!tournamentStarted&&(
+                  <div style={{background:'#1a2744',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#90caf9',marginBottom:12}}>
+                    🎯 Tus pronósticos se guardan automáticamente. Cierra el <b>11 de junio</b>.<br/>
+                    +3 pts resultado exacto · +1 pt ganador correcto
+                  </div>
+                )}
+                {groupMs.map(m=>{
+                  const q=quiniela[m.id]||{s1:'',s2:''}
+                  const hasReal=m.s1!==''&&m.s2!==''
+                  const badge=getBadge(m,q)
+                  return(
+                    <div key={m.id} style={{background:'#0d1b2a',borderRadius:10,padding:'10px 12px',border:'1px solid #1e3a5f',marginBottom:6}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                        <div style={{flex:1,textAlign:'right',fontSize:13,fontWeight:600}}>{F(m.t1)}</div>
+                        <div style={{display:'flex',alignItems:'center',gap:4}}>
+                          <ScoreInput val={q.s1} onChange={v=>updateQuiniela(m.id,'s1',v)} locked={now>=LOCK_DATE&&!isAdmin} w={40} color='#ce93d8'/>
+                          <span style={{color:'#546e7a'}}>–</span>
+                          <ScoreInput val={q.s2} onChange={v=>updateQuiniela(m.id,'s2',v)} locked={now>=LOCK_DATE&&!isAdmin} w={40} color='#ce93d8'/>
+                        </div>
+                        <div style={{flex:1,textAlign:'left',fontSize:13,fontWeight:600}}>{F(m.t2)}</div>
+                      </div>
+                      {hasReal&&<div style={{textAlign:'center',marginTop:4,fontSize:11,color:'#78909c'}}>Real: {m.s1}–{m.s2} {badge&&<span style={{color:badge.color}}>{badge.label}</span>}</div>}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Quiniela de fases eliminatorias */}
+            {quinielaPhase!=='groups'&&(()=>{
+              const phaseMatches=matches.filter(m=>m.phase===quinielaPhase&&m.t1)
+              const lockDate=PHASE_LOCK_DATES[quinielaPhase]
+              const phaseLocked=now>=lockDate&&!isAdmin
+              const phaseLabel={r32:'Ronda de 32',r16:'Octavos de Final',qf:'Cuartos de Final',sf:'Semifinales',final:'Gran Final'}
+
+              if(phaseMatches.length===0) return(
+                <div style={{textAlign:'center',color:'#546e7a',padding:30,fontSize:13,background:'#0d1b2a',borderRadius:12,border:'1px solid #1e3a5f'}}>
+                  ⏳ Los equipos de {phaseLabel[quinielaPhase]} aún no están definidos.<br/>
+                  <span style={{fontSize:11,marginTop:8,display:'block'}}>Se habilitará cuando el admin introduzca los equipos en la pestaña 🏆 Eliminatorias.</span>
                 </div>
               )
-            })}
+
+              return(
+                <div>
+                  {phaseLocked&&(
+                    <div style={{background:'#b71c1c',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#ffcdd2',marginBottom:12}}>
+                      🔒 La quiniela de {phaseLabel[quinielaPhase]} está cerrada.
+                    </div>
+                  )}
+                  {!phaseLocked&&(
+                    <div style={{background:'#1a2744',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#90caf9',marginBottom:12}}>
+                      🎯 {phaseLabel[quinielaPhase]} — Pronóstica el marcador.<br/>
+                      +3 pts marcador exacto · +1 pt ganador correcto
+                    </div>
+                  )}
+                  {phaseMatches.map(m=>{
+                    const q=quiniela[m.id]||{s1:'',s2:''}
+                    const hasReal=m.s1!==''&&m.s2!==''
+                    const badge=getBadge(m,q)
+                    return(
+                      <div key={m.id} style={{background:'#0d1b2a',borderRadius:10,padding:'12px',border:'1px solid #1e3a5f',marginBottom:8}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                          <div style={{flex:1,textAlign:'right',fontSize:13,fontWeight:600}}>{F(m.t1)}</div>
+                          <div style={{display:'flex',alignItems:'center',gap:4}}>
+                            <ScoreInput val={q.s1} onChange={v=>updateQuiniela(m.id,'s1',v)} locked={phaseLocked} w={40} color='#ce93d8'/>
+                            <span style={{color:'#546e7a'}}>–</span>
+                            <ScoreInput val={q.s2} onChange={v=>updateQuiniela(m.id,'s2',v)} locked={phaseLocked} w={40} color='#ce93d8'/>
+                          </div>
+                          <div style={{flex:1,textAlign:'left',fontSize:13,fontWeight:600}}>{F(m.t2)}</div>
+                        </div>
+                        {hasReal&&<div style={{textAlign:'center',marginTop:4,fontSize:11,color:'#78909c'}}>Real: {m.s1}–{m.s2}{m.pen1?` (Pen ${m.pen1}-${m.pen2})`:''} {badge&&<span style={{color:badge.color}}>{badge.label}</span>}</div>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </div>
         )}
 
@@ -1029,6 +1122,16 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
               <div style={{textAlign:'center',color:'#546e7a',padding:30,fontSize:13}}>Aún no hay participantes.</div>
             ):(
               <div>
+                <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:14,color:'#69f0ae',marginBottom:8}}>🏆 Rellenar Ronda de 32 automáticamente</div>
+              <div style={{fontSize:12,color:'#546e7a',marginBottom:12}}>
+                Rellena los enfrentamientos conocidos (1° y 2° de cada grupo) basándose en las clasificaciones actuales. Los terceros clasificados deben introducirse manualmente.
+              </div>
+              <button onClick={autoFillR32}
+                style={{background:'#1b5e20',border:'none',borderRadius:10,padding:'10px 20px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:13}}>
+                ⚡ Rellenar clasificados automáticamente
+              </button>
+            </div>
 
             <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
                   <div style={{fontWeight:800,fontSize:13,color:'#42a5f5',marginBottom:12}}>📊 Puntos actuales vs Máximo posible</div>
@@ -1130,16 +1233,6 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
         {/* ── ADMIN PANEL ── */}
         {tab==='adminpanel'&&isAdmin&&(
           <div>
-            <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
-              <div style={{fontWeight:800,fontSize:14,color:'#69f0ae',marginBottom:8}}>🏆 Rellenar Ronda de 32 automáticamente</div>
-              <div style={{fontSize:12,color:'#546e7a',marginBottom:12}}>
-                Rellena los enfrentamientos conocidos (1° y 2° de cada grupo). Los terceros se introducen manualmente.
-              </div>
-              <button onClick={autoFillR32}
-                style={{background:'#1b5e20',border:'none',borderRadius:10,padding:'10px 20px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:13}}>
-                ⚡ Rellenar clasificados automáticamente
-              </button>
-            </div>
             <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
               <div style={{fontWeight:800,fontSize:14,color:'#f57f17',marginBottom:8}}>📥 Importar quiniela desde CSV</div>
               <div style={{fontSize:12,color:'#546e7a',marginBottom:12}}>
