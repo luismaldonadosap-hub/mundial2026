@@ -51,7 +51,50 @@ const PHASE_LABELS = {r32:'Ronda de 32',r16:'Octavos',qf:'Cuartos',sf:'Semis',tp
 const PHASE_COLORS = {r32:'#546e7a',r16:'#1565c0',qf:'#6a1b9a',sf:'#ad1457',tp:'#37474f',final:'#f57f17'}
 const PHASE_COUNT  = {r32:16,r16:8,qf:4,sf:2,tp:1,final:1}
 
-// ── GENERADORES ───────────────────────────────────────────────
+// Bracket tree: maps r32 match index to r16 slot and position
+const BRACKET_TREE = {
+  // r32 index → { r16index, pos (0=t1, 1=t2) }
+  r32: [
+    {next:'r16', idx:0, pos:0}, // M73 winner → M89 t1
+    {next:'r16', idx:1, pos:0}, // M74 winner → M90 t1
+    {next:'r16', idx:0, pos:1}, // M75 winner → M89 t2
+    {next:'r16', idx:1, pos:1}, // M76 winner → M90 t2
+    {next:'r16', idx:2, pos:0}, // M77 winner → M91 t1
+    {next:'r16', idx:2, pos:1}, // M78 winner → M91 t2
+    {next:'r16', idx:3, pos:0}, // M79 winner → M92 t1
+    {next:'r16', idx:3, pos:1}, // M80 winner → M92 t2
+    {next:'r16', idx:4, pos:0}, // M81 winner → M93 t1
+    {next:'r16', idx:4, pos:1}, // M82 winner → M93 t2
+    {next:'r16', idx:5, pos:0}, // M83 winner → M94 t1
+    {next:'r16', idx:5, pos:1}, // M84 winner → M94 t2
+    {next:'r16', idx:6, pos:0}, // M85 winner → M95 t1
+    {next:'r16', idx:6, pos:1}, // M86 winner → M95 t2
+    {next:'r16', idx:7, pos:0}, // M87 winner → M96 t1
+    {next:'r16', idx:7, pos:1}, // M88 winner → M96 t2
+  ],
+  r16: [
+    {next:'qf', idx:0, pos:0}, // M89 winner → QF1 t1
+    {next:'qf', idx:0, pos:1}, // M90 winner → QF1 t2
+    {next:'qf', idx:1, pos:0}, // M91 winner → QF2 t1
+    {next:'qf', idx:1, pos:1}, // M92 winner → QF2 t2
+    {next:'qf', idx:2, pos:0}, // M93 winner → QF3 t1
+    {next:'qf', idx:2, pos:1}, // M94 winner → QF3 t2
+    {next:'qf', idx:3, pos:0}, // M95 winner → QF4 t1
+    {next:'qf', idx:3, pos:1}, // M96 winner → QF4 t2
+  ],
+  qf: [
+    {next:'sf', idx:0, pos:0},
+    {next:'sf', idx:0, pos:1},
+    {next:'sf', idx:1, pos:0},
+    {next:'sf', idx:1, pos:1},
+  ],
+  sf: [
+    {next:'final', idx:0, pos:0},
+    {next:'final', idx:0, pos:1},
+    {next:'tp', idx:0, pos:0},  // loser → 3rd place
+    {next:'tp', idx:0, pos:1},
+  ],
+}
 function buildGroupMatches() {
   const m=[]; let id=0
   const pairs=[[0,1],[2,3],[0,2],[1,3],[0,3],[1,2]]
@@ -243,18 +286,69 @@ export default function App(){
   }
 
   // ── MATCH SCORES ──────────────────────────────────────────
+  // Get winner of a match (considering penalties for knockout)
+  function getWinner(m){
+    const s1=parseInt(m.s1), s2=parseInt(m.s2)
+    if(isNaN(s1)||isNaN(s2)) return null
+    if(s1>s2) return m.t1
+    if(s2>s1) return m.t2
+    // Draw — check penalties
+    if(m.pen1&&m.pen2){
+      const p1=parseInt(m.pen1), p2=parseInt(m.pen2)
+      if(!isNaN(p1)&&!isNaN(p2)){
+        if(p1>p2) return m.t1
+        if(p2>p1) return m.t2
+      }
+    }
+    return null
+  }
+
+  // Auto-advance winner to next bracket slot
+  async function advanceWinner(updatedMatch){
+    if(!updatedMatch||!updatedMatch.phase||updatedMatch.phase==='groups') return
+    const phaseTree=BRACKET_TREE[updatedMatch.phase]
+    if(!phaseTree) return
+    // Find index of this match in its phase
+    const phaseMatches=matchesRef.current.filter(m=>m.phase===updatedMatch.phase)
+    const idx=phaseMatches.findIndex(m=>m.id===updatedMatch.id)
+    if(idx<0||idx>=phaseTree.length) return
+    const treeEntry=phaseTree[idx]
+    if(!treeEntry) return
+    const winner=getWinner(updatedMatch)
+    if(!winner) return
+    // Find next match
+    const nextMatches=matchesRef.current.filter(m=>m.phase===treeEntry.next)
+    const nextMatch=nextMatches[treeEntry.idx]
+    if(!nextMatch) return
+    const field=treeEntry.pos===0?'t1':'t2'
+    if(nextMatch[field]===winner) return // Already set
+    await supabase.from('matches').upsert({
+      id:nextMatch.id,phase:nextMatch.phase,grp:null,
+      t1:field==='t1'?winner:nextMatch.t1,
+      t2:field==='t2'?winner:nextMatch.t2,
+      s1:nextMatch.s1||'',s2:nextMatch.s2||'',
+      pen1:nextMatch.pen1||'',pen2:nextMatch.pen2||''
+    })
+    await loadMatches()
+  }
+
   const updateMatchScore = useCallback(async(id,field,val)=>{
     if(isLocked) return
     setMatches(prev=>prev.map(m=>m.id===id?{...m,[field]:val}:m))
     const m=matchesRef.current.find(x=>x.id===id)
     if(!m) return
     setSaving(true)
+    const updated={...m,[field]:val}
     await supabase.from('matches').upsert({
       id,phase:m.phase,grp:m.grp,
       t1:field==='t1'?val:m.t1,t2:field==='t2'?val:m.t2,
       s1:field==='s1'?val:m.s1,s2:field==='s2'?val:m.s2,
       pen1:field==='pen1'?val:m.pen1,pen2:field==='pen2'?val:m.pen2,
     })
+    // Auto-advance winner to next round
+    if(['s1','s2','pen1','pen2'].includes(field)){
+      await advanceWinner(updated)
+    }
     setSaving(false)
   },[isLocked])
 
@@ -460,12 +554,13 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
     const q1=parseInt(q.s1),q2=parseInt(q.s2)
     if(isNaN(r1)||isNaN(r2)||isNaN(q1)||isNaN(q2)) return null
     const isKnockout = match.phase !== 'groups'
+    // Exact score (regulation + extra time, NOT penalties)
     if(q1===r1&&q2===r2) return{pts:3,color:'#69f0ae',label:'✅ +3'}
-    // For knockout, also check penalty winner
-    const rWinner = r1>r2?'1':r1<r2?'2':(match.pen1&&match.pen2?(parseInt(match.pen1)>parseInt(match.pen2)?'1':'2'):null)
-    const qWinner = q1>q2?'1':q1<q2?'2':(match.pen1&&match.pen2?(parseInt(match.pen1)>parseInt(match.pen2)?'1':'2'):null)
     if(isKnockout){
-      if(rWinner&&qWinner&&rWinner===qWinner) return{pts:1,color:'#ffeb3b',label:'🟡 +1'}
+      // For knockout, winner is determined by penalties if draw
+      const winner=getWinner(match)
+      const qWinner=q1>q2?match.t1:q1<q2?match.t2:null
+      if(winner&&qWinner&&winner===qWinner) return{pts:1,color:'#ffeb3b',label:'🟡 +1'}
       return{pts:0,color:'#ef5350',label:'❌ +0'}
     }
     const rR=r1>r2?'1':r1<r2?'2':'X',qR=q1>q2?'1':q1<q2?'2':'X'
