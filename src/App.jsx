@@ -1319,6 +1319,14 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
         {tab==='adminpanel'&&isAdmin&&(
           <div>
             <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:14,color:'#69f0ae',marginBottom:8}}>🏆 Rellenar Ronda de 32 automáticamente</div>
+              <div style={{fontSize:12,color:'#546e7a',marginBottom:12}}>Rellena los enfrentamientos conocidos. Los terceros se introducen manualmente.</div>
+              <button onClick={autoFillR32}
+                style={{background:'#1b5e20',border:'none',borderRadius:10,padding:'10px 20px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:13}}>
+                ⚡ Rellenar clasificados automáticamente
+              </button>
+            </div>
+            <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
               <div style={{fontWeight:800,fontSize:14,color:'#f57f17',marginBottom:8}}>📥 Importar quiniela desde CSV</div>
               <div style={{fontSize:12,color:'#546e7a',marginBottom:12}}>
                 Formato: <code style={{color:'#90caf9'}}>nickname,grupo,equipo1,equipo2,goles1,goles2</code>
