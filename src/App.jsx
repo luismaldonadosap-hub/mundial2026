@@ -8,11 +8,15 @@ const LOCK_DATE  = new Date('2026-06-11T21:00:00Z')
 // Lock dates for each knockout phase (5 min before first match)
 const PHASE_LOCK_DATES = {
   groups: new Date('2026-06-11T21:00:00Z'),
-  r32:    new Date('2026-06-28T19:55:00Z'), // 5 min before 20:00 UTC (LA 13:00 PT)
-  r16:    new Date('2026-07-04T17:55:00Z'), // 5 min before 18:00 UTC
-  qf:     new Date('2026-07-08T17:55:00Z'), // 5 min before 18:00 UTC
-  sf:     new Date('2026-07-11T19:55:00Z'), // 5 min before 20:00 UTC
-  final:  new Date('2026-07-18T18:55:00Z'), // 5 min before 19:00 UTC
+  r32:    new Date('2026-06-28T19:55:00Z'),
+  r16:    new Date('2026-07-04T17:55:00Z'),
+  qf:     new Date('2026-07-08T17:55:00Z'),
+  sf:     new Date('2026-07-11T19:55:00Z'),
+  final:  new Date('2026-07-18T18:55:00Z'),
+}
+
+const PHASE_NAMES = {
+  groups:'Grupos', r32:'Ronda de 32', r16:'Octavos', qf:'Cuartos', sf:'Semis', final:'Final'
 }
 
 const GROUPS = {
@@ -197,7 +201,13 @@ export default function App(){
   const [csvMsg,setCsvMsg]             = useState('')
   const [csvLoading,setCsvLoading]     = useState(false)
   const [quinielaPhase, setQuinielaPhase] = useState('groups')
-  const [showChangePin,setShowChangePin]   = useState(false)
+  const [manualUnlock, setManualUnlock] = useState({})  // {phase: true/false}
+
+  const isPhaseUnlocked = (phase) => {
+    if(isAdmin) return true
+    if(manualUnlock[phase]) return true
+    return now < PHASE_LOCK_DATES[phase]
+  }
   const [changePinCurrent,setChangePinCurrent] = useState('')
   const [changePinNew,setChangePinNew]     = useState('')
   const [changePinConfirm,setChangePinConfirm] = useState('')
@@ -1012,7 +1022,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
             {quinielaPhase!=='groups'&&(()=>{
               const phaseMatches=matches.filter(m=>m.phase===quinielaPhase&&m.t1)
               const lockDate=PHASE_LOCK_DATES[quinielaPhase]
-              const phaseLocked=now>=lockDate&&!isAdmin
+              const phaseLocked=!isPhaseUnlocked(quinielaPhase)
               const phaseLabel={r32:'Ronda de 32',r16:'Octavos de Final',qf:'Cuartos de Final',sf:'Semifinales',final:'Gran Final'}
 
               if(phaseMatches.length===0) return(
@@ -1217,6 +1227,41 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
               <div style={{textAlign:'center',color:'#546e7a',padding:30,fontSize:13}}>Aún no hay participantes.</div>
             ):(
               <div>
+                <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:14,color:'#ce93d8',marginBottom:12}}>🔓 Control de quinielas por fase</div>
+              <div style={{fontSize:11,color:'#546e7a',marginBottom:12}}>Abre o cierra manualmente la quiniela de cada fase. Cuando está abierta, todos los usuarios pueden introducir pronósticos.</div>
+              {['groups','r32','r16','qf','sf','final'].map(phase=>{
+                const locked=now>=PHASE_LOCK_DATES[phase]
+                const unlocked=manualUnlock[phase]||false
+                const isOpen=!locked||unlocked
+                return(
+                  <div key={phase} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'#0d2137',borderRadius:8,marginBottom:6}}>
+                    <div>
+                      <span style={{color:'#fff',fontWeight:700,fontSize:13}}>{PHASE_NAMES[phase]}</span>
+                      <span style={{fontSize:11,color:isOpen?'#69f0ae':'#e57373',marginLeft:8}}>{isOpen?'🟢 Abierta':'🔴 Cerrada'}</span>
+                    </div>
+                    {locked&&(
+                      <button onClick={()=>togglePhaseUnlock(phase)}
+                        style={{background:unlocked?'#b71c1c':'#1b5e20',border:'none',borderRadius:8,padding:'5px 12px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:11}}>
+                        {unlocked?'🔒 Cerrar':'🔓 Abrir'}
+                      </button>
+                    )}
+                    {!locked&&<span style={{fontSize:11,color:'#546e7a'}}>Auto</span>}
+                  </div>
+                )
+              })}
+            </div>
+
+            <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:14,color:'#69f0ae',marginBottom:8}}>🏆 Rellenar Ronda de 32 automáticamente</div>
+              <div style={{fontSize:12,color:'#546e7a',marginBottom:12}}>
+                Rellena los enfrentamientos conocidos (1° y 2° de cada grupo) basándose en las clasificaciones actuales. Los terceros clasificados deben introducirse manualmente.
+              </div>
+              <button onClick={autoFillR32}
+                style={{background:'#1b5e20',border:'none',borderRadius:10,padding:'10px 20px',color:'#fff',fontWeight:700,cursor:'pointer',fontSize:13}}>
+                ⚡ Rellenar clasificados automáticamente
+              </button>
+            </div>
 
             <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
                   <div style={{fontWeight:800,fontSize:13,color:'#42a5f5',marginBottom:12}}>📊 Puntos actuales vs Máximo posible</div>
@@ -1326,6 +1371,7 @@ Para eliminatorias usa phase: r32/r16/qf/sf/tp/final y omite grp.`}]
                 ⚡ Rellenar clasificados automáticamente
               </button>
             </div>
+
             <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
               <div style={{fontWeight:800,fontSize:14,color:'#f57f17',marginBottom:8}}>📥 Importar quiniela desde CSV</div>
               <div style={{fontSize:12,color:'#546e7a',marginBottom:12}}>
