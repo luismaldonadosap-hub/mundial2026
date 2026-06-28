@@ -202,16 +202,17 @@ export default function App(){
   const [csvLoading,setCsvLoading]     = useState(false)
   const [quinielaPhase, setQuinielaPhase] = useState('groups')
   const [manualUnlock, setManualUnlock] = useState({})  // {phase: true/false}
+  const [changePinCurrent,setChangePinCurrent] = useState('')
+  const [changePinNew,setChangePinNew]     = useState('')
+  const [changePinConfirm,setChangePinConfirm] = useState('')
+  const [changePinMsg,setChangePinMsg]     = useState('')
+  const [showChangePin,setShowChangePin]   = useState(false)
 
   const isPhaseUnlocked = (phase) => {
     if(isAdmin) return true
     if(manualUnlock[phase]) return true
     return now < PHASE_LOCK_DATES[phase]
   }
-  const [changePinCurrent,setChangePinCurrent] = useState('')
-  const [changePinNew,setChangePinNew]     = useState('')
-  const [changePinConfirm,setChangePinConfirm] = useState('')
-  const [changePinMsg,setChangePinMsg]     = useState('')
 
   const now = new Date()
   const isLocked = now >= LOCK_DATE && !isAdmin
