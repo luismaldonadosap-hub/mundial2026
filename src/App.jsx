@@ -202,6 +202,7 @@ export default function App(){
   const [csvLoading,setCsvLoading]     = useState(false)
   const [quinielaPhase, setQuinielaPhase] = useState('groups')
   const [manualUnlock, setManualUnlock] = useState({})  // {phase: true/false}
+  const [showChangePin,setShowChangePin] = useState(false)
 
   const isPhaseUnlocked = (phase) => {
     if(isAdmin) return true
