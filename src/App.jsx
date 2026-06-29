@@ -251,11 +251,11 @@ export default function App(){
 
   async function loadAllQuinielas(){
     try{
-      const {data}=await supabase.from('quiniela').select('*')
+      const {data,error}=await supabase.from('quiniela').select('*')
+      console.log('loadAllQuinielas:', data?.length, error)
       if(data) setAllQuinielas(data)
-    }catch(e){}
+    }catch(e){ console.error('loadAllQuinielas error:', e) }
   }
-
   async function loadUnlocks(){
     try{
       const {data}=await supabase.from('config').select('*').like('key','unlock_%')
