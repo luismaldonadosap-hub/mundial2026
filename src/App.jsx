@@ -248,13 +248,21 @@ export default function App(){
       if(data){ const q={}; data.forEach(r=>{q[r.match_id]={s1:r.s1,s2:r.s2}}); setQuiniela(q) }
     }catch(e){}
   }
-
   async function loadAllQuinielas(){
     try{
-      const {data,error}=await supabase.from('quiniela').select('*').limit(10000)
-      console.log('loadAllQuinielas:', data?.length, error)
-      if(data) setAllQuinielas(data)
-    }catch(e){ console.error('loadAllQuinielas error:', e) }
+      let all=[]
+      let from=0
+      const pageSize=1000
+      while(true){
+        const {data,error}=await supabase.from('quiniela').select('*').range(from,from+pageSize-1)
+        if(error||!data||data.length===0) break
+        all=[...all,...data]
+        if(data.length<pageSize) break
+        from+=pageSize
+      }
+      console.log('loadAllQuinielas:', all.length)
+      setAllQuinielas(all)
+    }catch(e){ console.error('loadAllQuinielas error:',e) }
   }
   async function loadUnlocks(){
     try{
