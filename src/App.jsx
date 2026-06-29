@@ -251,7 +251,7 @@ export default function App(){
 
   async function loadAllQuinielas(){
     try{
-      const {data,error}=await supabase.from('quiniela').select('*')
+      const {data,error}=await supabase.from('quiniela').select('*').limit(100000)
       console.log('loadAllQuinielas:', data?.length, error)
       if(data) setAllQuinielas(data)
     }catch(e){ console.error('loadAllQuinielas error:', e) }
