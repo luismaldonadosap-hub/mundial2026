@@ -529,7 +529,6 @@ export default function App(){
     if(rR===qR) return{pts:1,color:'#ffeb3b',label:'🟡 +1'}
     return{pts:0,color:'#ef5350',label:'❌ +0'}
   }
-
   const ranking=useMemo(()=>{
     const users=[...new Set(allQuinielas.map(r=>r.nickname))]
     return users.map(nick=>{
