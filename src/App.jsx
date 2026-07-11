@@ -858,6 +858,25 @@ export default function App(){
                   ))}
                 </div>
               ))}
+         {(()=>{
+              const tpMatch=matches.find(m=>m.phase==='tp')
+              if(!tpMatch||!tpMatch.t1) return null
+              return(
+                <div style={{marginTop:16,maxWidth:200}}>
+                  <div style={{textAlign:'center',fontWeight:700,fontSize:11,color:'#37474f',background:'rgba(0,0,0,0.3)',borderRadius:8,padding:'4px 8px',marginBottom:8}}>🥉 Tercer Puesto</div>
+                  <div style={{background:'#0d1b2a',border:'1px solid #1e3a5f',borderRadius:8,padding:'8px 10px',fontSize:12}}>
+                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+                      <span style={{color:'#cfd8dc'}}>{F(tpMatch.t1)}</span>
+                      <span style={{fontWeight:800,color:'#fff'}}>{tpMatch.s1}</span>
+                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between'}}>
+                      <span style={{color:'#cfd8dc'}}>{F(tpMatch.t2)}</span>
+                      <span style={{fontWeight:800,color:'#fff'}}>{tpMatch.s2}</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
             </div>
             {(()=>{
               const f=matches.find(m=>m.phase==='final')
