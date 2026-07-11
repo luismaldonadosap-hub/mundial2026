@@ -11,11 +11,12 @@ const PHASE_LOCK_DATES = {
   r16:    new Date('2026-07-04T00:00:00Z'),
   qf:     new Date('2026-07-08T17:55:00Z'),
   sf:     new Date('2026-07-14T18:55:00Z'),
+  tp:     new Date('2026-07-18T18:55:00Z'),
   final:  new Date('2026-07-19T18:55:00Z'),
 }
 
 const PHASE_NAMES = {
-  groups:'Grupos', r32:'Ronda de 32', r16:'Octavos', qf:'Cuartos', sf:'Semis', final:'Final'
+  groups:'Grupos', r32:'Ronda de 32', r16:'Octavos', qf:'Cuartos', sf:'Semis', tp:'3er Puesto', final:'Final'
 }
 
 const GROUPS = {
@@ -65,7 +66,8 @@ const BRACKET_TREE = {
   r16: [
     {next:'qf',idx:0,pos:0},{next:'qf',idx:0,pos:1},{next:'qf',idx:1,pos:0},{next:'qf',idx:1,pos:1},
     {next:'qf',idx:2,pos:0},{next:'qf',idx:2,pos:1},{next:'qf',idx:3,pos:0},{next:'qf',idx:3,pos:1},
-  ],qf: [
+  ],
+  qf: [
     {next:'sf',idx:0,pos:0},{next:'sf',idx:1,pos:0},{next:'sf',idx:0,pos:1},{next:'sf',idx:1,pos:1},
   ],
   sf: [
@@ -247,22 +249,21 @@ export default function App(){
       if(data){ const q={}; data.forEach(r=>{q[r.match_id]={s1:r.s1,s2:r.s2}}); setQuiniela(q) }
     }catch(e){}
   }
+
   async function loadAllQuinielas(){
     try{
-      let all=[]
       let from=0
       const pageSize=1000
       while(true){
         const {data,error}=await supabase.from('quiniela').select('*').range(from,from+pageSize-1)
         if(error||!data||data.length===0) break
-        all=[...all,...data]
+        setAllQuinielas(prev=>from===0?data:[...prev,...data])
         if(data.length<pageSize) break
         from+=pageSize
       }
-      console.log('loadAllQuinielas:', all.length)
-      setAllQuinielas(all)
-    }catch(e){ console.error('loadAllQuinielas error:',e) }
+    }catch(e){}
   }
+
   async function loadUnlocks(){
     try{
       const {data}=await supabase.from('config').select('*').like('key','unlock_%')
@@ -518,16 +519,39 @@ export default function App(){
     const q1=parseInt(q.s1),q2=parseInt(q.s2)
     if(isNaN(r1)||isNaN(r2)||isNaN(q1)||isNaN(q2)) return null
     if(q1===r1&&q2===r2) return{pts:3,color:'#69f0ae',label:'✅ +3'}
-    const rR=r1>r2?'1':r1<r2?'2':'X'
-    const qR=q1>q2?'1':q1<q2?'2':'X'
+    if(match.phase!=='groups'){
+      const winner=getWinner(match)
+      const qWinner=q1>q2?match.t1:q1<q2?match.t2:null
+      if(winner&&qWinner&&winner===qWinner) return{pts:1,color:'#ffeb3b',label:'🟡 +1'}
+      return{pts:0,color:'#ef5350',label:'❌ +0'}
+    }
+    const rR=r1>r2?'1':r1<r2?'2':'X',qR=q1>q2?'1':q1<q2?'2':'X'
     if(rR===qR) return{pts:1,color:'#ffeb3b',label:'🟡 +1'}
     return{pts:0,color:'#ef5350',label:'❌ +0'}
   }
+
   const ranking=useMemo(()=>{
     const users=[...new Set(allQuinielas.map(r=>r.nickname))]
     return users.map(nick=>{
       let pts=0
       matches.forEach(m=>{
+        if(m.s1===''||m.s2==='') return
+        const q=allQuinielas.find(r=>r.nickname===nick&&r.match_id===m.id)
+        const badge=getBadge(m,q)
+        if(badge) pts+=badge.pts
+      })
+      return{nick,pts}
+    }).sort((a,b)=>b.pts-a.pts)
+  },[allQuinielas,matches])
+
+  // Ranking solo desde Ronda de 32 en adelante (para apuestas Club de Toby)
+  const rankingKnockout=useMemo(()=>{
+    const users=[...new Set(allQuinielas.map(r=>r.nickname))]
+    const knockoutPhases=['r32','r16','qf','sf','tp','final']
+    return users.map(nick=>{
+      let pts=0
+      matches.forEach(m=>{
+        if(!knockoutPhases.includes(m.phase)) return
         if(m.s1===''||m.s2==='') return
         const q=allQuinielas.find(r=>r.nickname===nick&&r.match_id===m.id)
         const badge=getBadge(m,q)
@@ -599,6 +623,7 @@ export default function App(){
     {id:'bracket',label:'🌐 Bracket'},
     {id:'quiniela',label:'🎯 Quiniela'},
     {id:'ranking',label:'🥇 Ranking'},
+    {id:'rankingko',label:'🏅 Ranking Eliminatorias'},
     {id:'pronosticos',label:'👁 Pronósticos'},
     {id:'estadisticas',label:'📈 Estadísticas'},
     ...(isAdmin?[{id:'adminpanel',label:'⚙️ Admin'}]:[]),
@@ -609,7 +634,7 @@ export default function App(){
     <div style={{fontFamily:'system-ui',background:'#0a0e1a',minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff'}}>
       <div style={{background:'#0d1b2a',border:'2px solid #1565c0',borderRadius:20,padding:36,width:300,textAlign:'center',boxShadow:'0 8px 32px rgba(0,0,0,0.5)'}}>
         <div style={{fontSize:40,marginBottom:8}}>🏆</div>
-        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Copa del Mundo Fray Luis 2026</div>
+        <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Copa del Mundo - Fray Luis 2026</div>
         {pinStep==='nick'&&<>
           <div style={{fontSize:13,color:'#90caf9',marginBottom:24}}>Introduce tu nombre para entrar</div>
           <input value={nickInput} onChange={e=>setNickInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&nickInput.trim()&&handleNickSubmit()} placeholder="Tu nombre o apodo"
@@ -689,7 +714,7 @@ export default function App(){
             <button onClick={()=>setShowChangePin(true)} style={{background:'rgba(255,255,255,0.1)',border:'none',borderRadius:10,padding:'2px 8px',color:'#90caf9',cursor:'pointer',fontSize:10,marginLeft:6}}>🔑 PIN</button>
           </div>
           <div>
-            <div style={{fontSize:24,fontWeight:800}}>🏆 Copa del Mundo Fray Luis 2026</div>
+            <div style={{fontSize:24,fontWeight:800}}>🏆 Copa del Mundo - Fray Luis 2026</div>
             <div style={{fontSize:11,color:'#90caf9',marginBottom:6}}>EE.UU. · Canadá · México • 11 Jun – 19 Jul</div>
           </div>
           <div style={{textAlign:'right',paddingTop:4}}>
@@ -861,6 +886,7 @@ export default function App(){
                 {id:'r16',label:'⚔️ Octavos'},
                 {id:'qf',label:'🏅 Cuartos'},
                 {id:'sf',label:'🌟 Semis'},
+                {id:'tp',label:'🥉 3er Puesto'},
                 {id:'final',label:'🏆 Final'},
               ].map(p=>{
                 const open=isPhaseOpen(p.id)
@@ -965,6 +991,28 @@ export default function App(){
           </div>
         )}
 
+        {/* ── RANKING ELIMINATORIAS (solo Club de Toby) ── */}
+        {tab==='rankingko'&&(
+          <div style={{background:'#0d1b2a',borderRadius:12,overflow:'hidden',border:'1px solid #1e3a5f'}}>
+            <div style={{background:'linear-gradient(90deg,#7b1fa2,#ad1457)',padding:'10px 16px',fontWeight:800,fontSize:14,color:'#fff'}}>
+              🏅 Ranking Eliminatorias (solo R32 en adelante)
+            </div>
+            <div style={{padding:'8px 16px',fontSize:11,color:'#ce93d8',borderBottom:'1px solid #1e3a5f'}}>
+              💰 Este ranking no incluye los puntos de la fase de grupos — solo cuenta desde la Ronda de 32.
+            </div>
+            {rankingKnockout.length===0&&<div style={{padding:20,textAlign:'center',color:'#546e7a',fontSize:13}}>Aún no hay resultados eliminatorios.</div>}
+            {rankingKnockout.map(({nick,pts},i)=>(
+              <div key={nick} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 16px',borderTop:'1px solid #1e3a5f',background:nick===nickname?'rgba(123,31,162,0.2)':'transparent'}}>
+                <span style={{fontWeight:800,fontSize:18,width:28,textAlign:'center',color:i===0?'#ffd600':i===1?'#b0bec5':i===2?'#ff8a65':'#546e7a'}}>
+                  {i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}
+                </span>
+                <span style={{flex:1,fontWeight:nick===nickname?700:400}}>{nick}{nick===nickname&&' (tú)'}</span>
+                <span style={{fontWeight:800,fontSize:18,color:'#fff'}}>{pts} <span style={{fontSize:12,color:'#546e7a'}}>pts</span></span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* ── PRONÓSTICOS ── */}
         {tab==='pronosticos'&&(
           <div>
@@ -992,7 +1040,7 @@ export default function App(){
                           style={{background:isGroupPhase?'#1565c0':'#1e2a3a',border:'2px solid',borderColor:isGroupPhase?'#42a5f5':'#37474f',borderRadius:8,padding:'4px 12px',color:isGroupPhase?'#fff':'#90caf9',cursor:'pointer',fontWeight:700,fontSize:11}}>
                           ⚽ Grupos
                         </button>
-                        {['r32','r16','qf','sf','final'].map(p=>{
+                        {['r32','r16','qf','sf','tp','final'].map(p=>{
                           const hasTeams=matches.filter(m=>m.phase===p&&m.t1).length>0
                           return hasTeams?(
                             <button key={p} onClick={()=>setActiveGroup(p)}
@@ -1238,7 +1286,7 @@ export default function App(){
             <div style={{background:'#0d1b2a',borderRadius:12,padding:16,border:'1px solid #1e3a5f',marginBottom:16}}>
               <div style={{fontWeight:800,fontSize:14,color:'#ce93d8',marginBottom:8}}>🔓 Control de quinielas por fase</div>
               <div style={{fontSize:11,color:'#546e7a',marginBottom:12}}>Abre o cierra manualmente la quiniela de cada fase.</div>
-              {['groups','r32','r16','qf','sf','final'].map(phase=>{
+              {['groups','r32','r16','qf','sf','tp','final'].map(phase=>{
                 const autoLocked=now>=PHASE_LOCK_DATES[phase]
                 const unlocked=manualUnlock[phase]||false
                 const isOpen=!autoLocked||unlocked
