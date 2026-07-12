@@ -343,7 +343,7 @@ export default function App(){
     return null
   }
 
-async function advanceWinner(updatedMatch){
+  async function advanceWinner(updatedMatch){
     if(!updatedMatch?.phase||updatedMatch.phase==='groups'||updatedMatch.phase==='tp') return
     const phaseTree=BRACKET_TREE[updatedMatch.phase]
     if(!phaseTree) return
@@ -355,35 +355,16 @@ async function advanceWinner(updatedMatch){
     if(!winner) return
     const nextMatches=matchesRef.current.filter(m=>m.phase===treeEntry.next)
     const nextMatch=nextMatches[treeEntry.idx]
-    if(nextMatch){
-      const field=treeEntry.pos===0?'t1':'t2'
-      if(nextMatch[field]!==winner){
-        await supabase.from('matches').upsert({
-          id:nextMatch.id,phase:nextMatch.phase,grp:null,
-          t1:field==='t1'?winner:nextMatch.t1,
-          t2:field==='t2'?winner:nextMatch.t2,
-          s1:nextMatch.s1||'',s2:nextMatch.s2||'',pen1:nextMatch.pen1||'',pen2:nextMatch.pen2||''
-        })
-      }
-    }
-    if(updatedMatch.phase==='sf'){
-      const loser = winner===updatedMatch.t1 ? updatedMatch.t2 : updatedMatch.t1
-      if(loser){
-        const tpMatches=matchesRef.current.filter(m=>m.phase==='tp')
-        const tpMatch=tpMatches[0]
-        if(tpMatch){
-          const field=idx===0?'t1':'t2'
-          if(tpMatch[field]!==loser){
-            await supabase.from('matches').upsert({
-              id:tpMatch.id,phase:'tp',grp:null,
-              t1:field==='t1'?loser:tpMatch.t1,
-              t2:field==='t2'?loser:tpMatch.t2,
-              s1:tpMatch.s1||'',s2:tpMatch.s2||'',pen1:tpMatch.pen1||'',pen2:tpMatch.pen2||''
-            })
-          }
-        }
-      }
-    }
+    if(!nextMatch) return
+    const field=treeEntry.pos===0?'t1':'t2'
+    if(nextMatch[field]===winner) return
+    await supabase.from('matches').upsert({
+      id:nextMatch.id,phase:nextMatch.phase,grp:null,
+      t1:field==='t1'?winner:nextMatch.t1,
+      t2:field==='t2'?winner:nextMatch.t2,
+      s1:nextMatch.s1||'',s2:nextMatch.s2||'',pen1:nextMatch.pen1||'',pen2:nextMatch.pen2||''
+    })
+    await loadMatches()
   }
 
   // ── MATCH SCORES ──────────────────────────────────────────
@@ -394,6 +375,7 @@ async function advanceWinner(updatedMatch){
     if(!m) return
     setSaving(true)
     const updated={...m,[field]:val}
+    matchesRef.current = matchesRef.current.map(x=>x.id===id?updated:x)
     await supabase.from('matches').upsert({
       id,phase:m.phase,grp:m.grp,
       t1:field==='t1'?val:m.t1,t2:field==='t2'?val:m.t2,
@@ -876,9 +858,10 @@ async function advanceWinner(updatedMatch){
                   ))}
                 </div>
               ))}
-         {(()=>{
+            </div>
+            {(()=>{
               const tpMatch=matches.find(m=>m.phase==='tp')
-              if(!tpMatch) return null
+              if(!tpMatch||!tpMatch.t1) return null
               return(
                 <div style={{marginTop:16,maxWidth:200}}>
                   <div style={{textAlign:'center',fontWeight:700,fontSize:11,color:'#37474f',background:'rgba(0,0,0,0.3)',borderRadius:8,padding:'4px 8px',marginBottom:8}}>🥉 Tercer Puesto</div>
@@ -895,7 +878,6 @@ async function advanceWinner(updatedMatch){
                 </div>
               )
             })()}
-            </div>
             {(()=>{
               const f=matches.find(m=>m.phase==='final')
               if(!f||(!f.s1&&!f.s2)) return null
