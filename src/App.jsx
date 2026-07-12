@@ -72,7 +72,6 @@ const BRACKET_TREE = {
   ],
   sf: [
     {next:'final',idx:0,pos:0},{next:'final',idx:0,pos:1},
-    {next:'tp',idx:0,pos:0},{next:'tp',idx:0,pos:1},
   ],
 }
 
