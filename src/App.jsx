@@ -384,8 +384,14 @@ export default function App(){
         t1:u.t1,t2:u.t2,s1:u.s1,s2:u.s2,pen1:u.pen1,pen2:u.pen2
       })
     }
-    matchesRef.current=current
-    setMatches(current)
+    // Merge only the changed slots into the latest state/ref instead of
+    // replacing the whole array with this snapshot — matchesRef.current can
+    // lag one render behind (e.g. right after an admin types an R32 team
+    // name), and overwriting everything with it would revert those pending,
+    // unrelated edits.
+    const byId=new Map(updates.map(u=>[u.id,u]))
+    setMatches(prev=>prev.map(m=>byId.has(m.id)?{...m,...byId.get(m.id)}:m))
+    matchesRef.current=matchesRef.current.map(m=>byId.has(m.id)?{...m,...byId.get(m.id)}:m)
   }
 
   // ── MATCH SCORES ──────────────────────────────────────────
@@ -412,6 +418,8 @@ export default function App(){
     setMatches(prev=>prev.map(m=>m.id===id?{...m,[field]:val}:m))
     const m=matchesRef.current.find(x=>x.id===id)
     if(!m) return
+    const updated={...m,[field]:val}
+    matchesRef.current = matchesRef.current.map(x=>x.id===id?updated:x)
     await supabase.from('matches').upsert({
       id,phase:m.phase,grp:null,
       t1:field==='t1'?val:m.t1,t2:field==='t2'?val:m.t2,
