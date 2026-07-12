@@ -58,10 +58,10 @@ const PHASE_COUNT  = {r32:16,r16:8,qf:4,sf:2,tp:1,final:1}
 // Bracket tree for auto-advance
 const BRACKET_TREE = {
   r32: [
-    {next:'r16',idx:0,pos:0},{next:'r16',idx:1,pos:0},{next:'r16',idx:0,pos:1},{next:'r16',idx:1,pos:1},
-    {next:'r16',idx:2,pos:0},{next:'r16',idx:2,pos:1},{next:'r16',idx:3,pos:0},{next:'r16',idx:3,pos:1},
+    {next:'r16',idx:0,pos:0},{next:'r16',idx:1,pos:0},{next:'r16',idx:0,pos:1},{next:'r16',idx:2,pos:0},
+    {next:'r16',idx:1,pos:1},{next:'r16',idx:2,pos:1},{next:'r16',idx:3,pos:0},{next:'r16',idx:3,pos:1},
     {next:'r16',idx:4,pos:0},{next:'r16',idx:4,pos:1},{next:'r16',idx:5,pos:0},{next:'r16',idx:5,pos:1},
-    {next:'r16',idx:6,pos:0},{next:'r16',idx:6,pos:1},{next:'r16',idx:7,pos:0},{next:'r16',idx:7,pos:1},
+    {next:'r16',idx:6,pos:0},{next:'r16',idx:7,pos:0},{next:'r16',idx:6,pos:1},{next:'r16',idx:7,pos:1},
   ],
   r16: [
     {next:'qf',idx:0,pos:0},{next:'qf',idx:0,pos:1},{next:'qf',idx:1,pos:0},{next:'qf',idx:1,pos:1},
