@@ -869,9 +869,9 @@ export default function App(){
         {tab==='bracket'&&(
           <div style={{overflowX:'auto',paddingBottom:12}}>
             <div style={{display:'flex',gap:10,minWidth:1100,alignItems:'flex-start'}}>
-              {PHASE_ORDER.filter(p=>p!=='tp').map(phase=>(
+              {PHASE_ORDER.filter(p=>p!=='tp'||matches.find(m=>m.phase==='tp')?.t1).map(phase=>(
                 <div key={phase} style={{minWidth:165,flex:'0 0 auto'}}>
-                  <div style={{textAlign:'center',fontWeight:700,fontSize:11,color:PHASE_COLORS[phase],background:'rgba(0,0,0,0.3)',borderRadius:8,padding:'4px 8px',marginBottom:8}}>{PHASE_LABELS[phase]}</div>
+                  <div style={{textAlign:'center',fontWeight:700,fontSize:11,color:PHASE_COLORS[phase],background:'rgba(0,0,0,0.3)',borderRadius:8,padding:'4px 8px',marginBottom:8}}>{phase==='tp'?'🥉 ':''}{PHASE_LABELS[phase]}</div>
                   {matches.filter(m=>m.phase===phase).map(m=>(
                     <div key={m.id} style={{background:'#0d1b2a',border:'1px solid #1e3a5f',borderRadius:8,padding:'8px 10px',marginBottom:8,fontSize:12}}>
                       <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
@@ -888,25 +888,6 @@ export default function App(){
                 </div>
               ))}
             </div>
-            {(()=>{
-              const tpMatch=matches.find(m=>m.phase==='tp')
-              if(!tpMatch||!tpMatch.t1) return null
-              return(
-                <div style={{marginTop:16,maxWidth:200}}>
-                  <div style={{textAlign:'center',fontWeight:700,fontSize:11,color:'#37474f',background:'rgba(0,0,0,0.3)',borderRadius:8,padding:'4px 8px',marginBottom:8}}>🥉 Tercer Puesto</div>
-                  <div style={{background:'#0d1b2a',border:'1px solid #1e3a5f',borderRadius:8,padding:'8px 10px',fontSize:12}}>
-                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
-                      <span style={{color:'#cfd8dc'}}>{F(tpMatch.t1)}</span>
-                      <span style={{fontWeight:800,color:'#fff'}}>{tpMatch.s1}</span>
-                    </div>
-                    <div style={{display:'flex',justifyContent:'space-between'}}>
-                      <span style={{color:'#cfd8dc'}}>{F(tpMatch.t2)}</span>
-                      <span style={{fontWeight:800,color:'#fff'}}>{tpMatch.s2}</span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })()}
             {(()=>{
               const f=matches.find(m=>m.phase==='final')
               if(!f||(!f.s1&&!f.s2)) return null
