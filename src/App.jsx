@@ -344,7 +344,7 @@ export default function App(){
     return null
   }
 
-  async function advanceWinner(updatedMatch){
+async function advanceWinner(updatedMatch){
     if(!updatedMatch?.phase||updatedMatch.phase==='groups'||updatedMatch.phase==='tp') return
     const phaseTree=BRACKET_TREE[updatedMatch.phase]
     if(!phaseTree) return
@@ -356,16 +356,35 @@ export default function App(){
     if(!winner) return
     const nextMatches=matchesRef.current.filter(m=>m.phase===treeEntry.next)
     const nextMatch=nextMatches[treeEntry.idx]
-    if(!nextMatch) return
-    const field=treeEntry.pos===0?'t1':'t2'
-    if(nextMatch[field]===winner) return
-    await supabase.from('matches').upsert({
-      id:nextMatch.id,phase:nextMatch.phase,grp:null,
-      t1:field==='t1'?winner:nextMatch.t1,
-      t2:field==='t2'?winner:nextMatch.t2,
-      s1:nextMatch.s1||'',s2:nextMatch.s2||'',pen1:nextMatch.pen1||'',pen2:nextMatch.pen2||''
-    })
-    await loadMatches()
+    if(nextMatch){
+      const field=treeEntry.pos===0?'t1':'t2'
+      if(nextMatch[field]!==winner){
+        await supabase.from('matches').upsert({
+          id:nextMatch.id,phase:nextMatch.phase,grp:null,
+          t1:field==='t1'?winner:nextMatch.t1,
+          t2:field==='t2'?winner:nextMatch.t2,
+          s1:nextMatch.s1||'',s2:nextMatch.s2||'',pen1:nextMatch.pen1||'',pen2:nextMatch.pen2||''
+        })
+      }
+    }
+    if(updatedMatch.phase==='sf'){
+      const loser = winner===updatedMatch.t1 ? updatedMatch.t2 : updatedMatch.t1
+      if(loser){
+        const tpMatches=matchesRef.current.filter(m=>m.phase==='tp')
+        const tpMatch=tpMatches[0]
+        if(tpMatch){
+          const field=idx===0?'t1':'t2'
+          if(tpMatch[field]!==loser){
+            await supabase.from('matches').upsert({
+              id:tpMatch.id,phase:'tp',grp:null,
+              t1:field==='t1'?loser:tpMatch.t1,
+              t2:field==='t2'?loser:tpMatch.t2,
+              s1:tpMatch.s1||'',s2:tpMatch.s2||'',pen1:tpMatch.pen1||'',pen2:tpMatch.pen2||''
+            })
+          }
+        }
+      }
+    }
   }
 
   // ── MATCH SCORES ──────────────────────────────────────────
